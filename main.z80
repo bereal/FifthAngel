@@ -1,0 +1,22 @@
+	DEVICE ZXSPECTRUM48
+
+	ORG #c000
+start:
+	ld de, hello
+
+loop:
+	ld a, (de)
+	or a
+	jr z, exit
+	rst #10
+	inc de
+	jr loop
+
+exit:
+	di
+	halt
+
+hello: db 'Hello world!', 0
+
+end:
+	SAVETAP TAPNAME,CODE,"panda48",start,end-start
