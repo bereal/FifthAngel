@@ -1,0 +1,36 @@
+read_key:
+	ld hl, keyboard_map
+.loop
+	ld a, (hl)
+	or a
+	jr z, .end
+
+	inc hl
+	in a, (0xFE)
+	and 0x1F
+
+	ld d, 5
+1
+	srl a
+	jr nc, .found
+	inc hl
+	dec d
+	jr nz, 1B
+	jr .loop
+
+.found
+	ld a, (hl)
+.end
+	ret
+
+keyboard_map
+	DB 0xFE,  0, "Z", "X", "C", "V"
+	DB 0xFD, "A", "S", "D", "F", "G"
+	DB 0xFB, "Q", "W", "E", "R", "T"
+	DB 0xF7, "1", "2", "3", "4", "5"
+	DB 0xEF, "0", "9", "8", "7", "6"
+	DB 0xDF, "P", "O", "I", "U", "Y"
+	DB 0xBF, 0xC, "L", "K", "J", "H"
+	DB 0x7F, " ", 0, "M", "N", "B"
+	DB 0
+

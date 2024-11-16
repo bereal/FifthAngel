@@ -7,16 +7,23 @@ start:
 loop:
 	ld a, (de)
 	or a
-	jr z, exit
-	rst #10
+	jr z, read
+	rst 0x10
 	inc de
 	jr loop
 
-exit:
-	di
-	halt
+read:
+	call read_key
+	or a
+	jr z, read
+	rst 0x10
+	.8 halt
+	jr read
 
-hello: db 'Hello world!', 0
+hello: db 'Press any key!', 0
+
+	include "keyboard.z80"
+
 
 end:
 	SAVETAP TAPNAME,CODE,"panda48",start,end-start
