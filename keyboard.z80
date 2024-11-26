@@ -1,4 +1,5 @@
-read_key:
+	MODULE keyboard
+@read_key:
 	ld hl, keyboard_map
 .loop
 	ld a, (hl)
@@ -34,3 +35,4 @@ keyboard_map
 	DB 0x7F, " ", 0, "M", "N", "B"
 	DB 0
 
+	ENDMODULE

@@ -1,7 +1,8 @@
 	DEVICE ZXSPECTRUM48
 
-	ORG #c000
+	ORG #8000
 start:
+	call copy_buffer
 	ld de, hello
 
 loop:
@@ -11,6 +12,7 @@ loop:
 	rst 0x10
 	inc de
 	jr loop
+
 
 read:
 	call read_key
@@ -23,6 +25,7 @@ read:
 hello: db 'Press any key!', 0
 
 	include "keyboard.z80"
+	include "screen.z80"
 
 
 end:
