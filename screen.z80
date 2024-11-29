@@ -1,122 +1,252 @@
-;; Copy a raw of 12x1 cells
-;; DE - start of the first line data
-;; HL - end or the first screen line
-copy_row_12:
-	ld (.restore_sp+1), sp
-	ld (.set_in_sp+1), de
-
-.loop
-	ld (.set_out_sp+1), hl
-
-.set_in_sp
-	ld sp, 0
-	pop af
-	pop bc
-	pop de
-	exx
-	pop bc
-	pop de
-	pop hl
-	ld (.set_in_sp+1), sp
-
-.set_out_sp
-	ld sp, 0
-	push hl
-	push de
-	push bc
-	exx
-	push de
-	push bc
-	push af
-
-	inc h
-	ld a, h
-	and 7
-	jp nz, .loop
-
-.restore_sp
-	ld sp, 0
-	ret
-
-;; Copy a raw of 10x1 cells
-;; DE - start of the first line data
-;; HL - end or the first screen line
-copy_row_10:
-	ld (.restore_sp+1), sp
-	ld (.set_in_sp+1), de
-	ld a, 8
-
-.loop
-	ld (.set_out_sp+1), hl
-
-.set_in_sp
-	ld sp, 0
-	pop bc
-	pop de
-	exx
-	pop bc
-	pop de
-	pop hl
-	ld (.set_in_sp+1), sp
-
-.set_out_sp
-	ld sp, 0
-	push hl
-	push de
-	push bc
-	exx
-	push de
-	push bc
-	inc h
-	dec a
-	jp nz, .loop
-
-.restore_sp
-	ld sp, 0
-	ret
-
-	define left_width      12
-	define right_width     10
-	define total_width     left_width + right_width
-	define height          18
-
-	define left_buffer     0
-	define left_row_size   left_width * 8
-	define right_row_size  right_width * 8
-	define right_buffer    left_buffer + left_width * height
-
-	macro copy_full_row n_row, dest
-		ld de, left_buffer + left_row_size * n_row
-		ld hl, dest + left_width
-		call copy_row_12
-		ld de, right_buffer + right_row_size * n_row
-		ld hl, dest + total_width
-		call copy_row_10
+	macro copy_2_lines
+		pop de
+		ld (hl), e
+		inc l
+		ld (hl), d
+		inc h
+		pop de
+		ld (hl), d
+		dec l
+		ld (hl), e
 	endm
 
+	macro copy_8_lines
+		copy_2_lines
+		inc h
+		copy_2_lines
+		inc h
+		copy_2_lines
+		inc h
+		copy_2_lines
+	endm
+
+;; hl - tile address
+;; de - screen
+draw_tile:
+	ld (.ret+1), sp
+	ld sp, hl
+
+	ex de, hl
+
+	copy_8_lines
+
+.set_next_line_shift
+	ld bc, 0xf920
+	add hl, bc
+
+	copy_8_lines
+
+.ret
+	ld sp, 0
+	ret
+
+	macro locate_tile_data
+		ld c, (hl)
+		ld b, 0
+		sla c
+		rl b
+		ld hl, tiles_pallette
+		add hl, bc
+		ld ($+4), hl
+		ld hl, (0)
+	endm
+
+draw_tile_line:
+	ld b, 11
+.loop
+	push bc
+	push hl
+	push de
+
+	locate_tile_data
+
+	call draw_tile
+	pop de
+	pop hl
+	pop bc
+	inc hl
+	inc de
+	inc de
+	djnz .loop
+	ret
+
+	macro swap_subscreen_rim
+		ld a, (draw_tile.set_next_line_shift + 2)
+		xor 0xf9
+		ld (draw_tile.set_next_line_shift + 2), a
+	endm
+
+draw_map:
+	ld hl, (map_position)
+	ld de, 0x4021
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4061
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x40a1
+	push hl
+	call draw_tile_line
+	pop hl
+
+	swap_subscreen_rim
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x40e1
+	push hl
+	call draw_tile_line
+	pop hl
+
+	swap_subscreen_rim
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4821
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4861
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x48a1
+	push hl
+	call draw_tile_line
+	pop hl
+
+	swap_subscreen_rim
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x48e1
+	push hl
+	call draw_tile_line
+	pop hl
+
+	swap_subscreen_rim
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x5021
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ret
+
 copy_buffer:
+	ld a, 0
+	out (254), a
+
+	ld hl, 0x4000+0x800*3
+	ld (hl), 0b101111
+	push hl
+	pop de
+	inc de
+	ld bc, 0xff
+	ldir
+
+	ld hl, 0x4000+0x800*3+0x100
+	ld (hl), 0b011111
+	push hl
+	pop de
+	inc de
+	ld bc, 0xff
+	ldir
+
+	ld hl, 0x4000+0x800*3+0x200
+	ld (hl), 0b110101
+	push hl
+	pop de
+	inc de
+	ld bc, 0xff
+	ldir
+
+
 .forever
 	halt
 	di
-	ld a, 5
-	out (254), a
-	copy_full_row 0, 0x4021
-	copy_full_row 1, 0x4041
-	copy_full_row 2, 0x4061
-	copy_full_row 3, 0x4081
-	copy_full_row 4, 0x40a1
-	copy_full_row 5, 0x40c1
-	copy_full_row 6, 0x40e1
-	copy_full_row 7, 0x4801
-	copy_full_row 8, 0x4821
-	copy_full_row 9, 0x4841
-	copy_full_row 10, 0x4841
-	copy_full_row 11, 0x4861
-	copy_full_row 12, 0x4881
-	copy_full_row 13, 0x48a1
-	copy_full_row 14, 0x48c1
-	ld a, 0
-	out (254), a
+
+	call draw_map
+
 	ei
+	.5 halt
+
+	ld hl, (.setpos + 1)
+	ld a, l
+	xor 32
+	ld l, a
+	ld (.setpos + 1), hl
+	ld hl, map
+.setpos
+	ld bc, 0
+	add hl, bc
+	ld (map_position), hl
+	jp $
 	jp .forever
 	ret
+
+map_position:
+	dw map
+
+map:
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+	.16 db 1,0
+	.16 db 0,1
+
+tiles_pallette:
+	dw tile_0
+	dw tile_1
+	dw 0
+
+tile_0:
+	.32 db 0
+
+tile_1:
+	.8 db 0x55, 0x55, 0xaa, 0xaa
+
+f
