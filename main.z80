@@ -2,23 +2,54 @@
 
 	ORG #8000
 start:
-	call copy_buffer
+	ld sp, 0
+	call set_im2
+	call draw_map
+	halt
 	ld de, hello
+	ld a, 1
+	out (254), a
 
-loop:
-	ld a, (de)
-	or a
-	jr z, read
-	rst 0x10
-	inc de
-	jr loop
+; loop:
+; 	ld a, (de)
+; 	or a
+; 	jr z, read
+; 	rst 0x10
+; 	inc de
+; 	jr loop
 
 
 read:
-	call read_key
+	halt
+	call read_defined_key
+.key
 	or a
 	jr z, read
-	rst 0x10
+	and 0b01111111
+	cp 1
+	jr nz, .notup
+	call move_up
+	call draw_map
+	jr .next
+.notup
+	cp 2
+	jr nz, .notdown
+	call move_down
+	call draw_map
+	jr .next
+.notdown
+	cp 3
+	jr nz, .notleft
+	call move_left
+	call draw_map
+	jr .next
+.notleft
+	cp 4
+	jr nz, .next
+	call move_right
+	call draw_map
+
+.next
 	.8 halt
 	jr read
 
@@ -26,7 +57,8 @@ hello: db 'Press any key!', 0
 
 	include "keyboard.z80"
 	include "screen.z80"
-
+	include "constants.z80"
+	include "interrupts.z80"
 
 end:
 	SAVETAP TAPNAME,CODE,"panda48",start,end-start

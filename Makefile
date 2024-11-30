@@ -4,7 +4,7 @@ FONTBIN := $(BUILD_DIR)/font.bin
 
 all: $(TAP)
 
-$(TAP): loader.bas $(shell find . -name \*.z80) $(FONTBIN)
+$(TAP): loader.bas $(shell find . -name \*.z80) $(shell find . -name \*.bin)
 	mkdir -p $(BUILD_DIR)
 	bas2tap -a loader.bas $@
 	sjasmplus -DTAPNAME='"$@"' -DFONT=$(FONTBIN) --sym=symbols.txt main.z80

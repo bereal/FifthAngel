@@ -24,6 +24,29 @@
 .end
 	ret
 
+@read_defined_key:
+	call read_key
+	or a
+	ret z
+.found_key
+	ld hl, defined_keys
+	ld b, a
+	ld c, 0
+.loop
+	inc c
+	ld a, (hl)
+	inc hl
+	or a
+	ret z
+	cp b
+	jr nz, .loop
+	ld a, c
+	or 0x80
+	ret
+
+defined_keys:
+	db "QAOP ", 0
+
 keyboard_map
 	DB 0xFE,  0, "Z", "X", "C", "V"
 	DB 0xFD, "A", "S", "D", "F", "G"
