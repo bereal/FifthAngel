@@ -51,4 +51,4 @@ hello: db 'Press any key!', 0
 	include "interrupts.z80"
 
 end:
-	SAVETAP TAPNAME,CODE,"panda48",start,end-start
+	SAVETAP TAPNAME,CODE,"angel5",start,end-start
