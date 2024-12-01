@@ -1,16 +1,4 @@
 set_im2:
-    ; di
-    ; ld hl, routine
-    ; ld ix, 0xfff0
-    ; ld (ix+4), 0xc3
-    ; ld (ix+5), l
-    ; ld (ix+6), h
-    ; ld (ix+0xf), 0x18
-    ; ld a, 0x39
-    ; ld i, a
-    ; im 2
-    ; ei
-    ; ret
     di
     ld hl, 0xFE00
     ld de, 0xFE01
@@ -29,8 +17,8 @@ set_im2:
     ei
     ret
 
-
 routine:
     di
+    ;; TODO
     ei
     reti

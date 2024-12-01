@@ -1,3 +1,6 @@
+;; the map size is everywhere assumed to be 32x32
+	define MAP_SIZE 32
+
 	macro copy_2_lines
 		pop de
 		ld (hl), e
@@ -20,12 +23,11 @@
 		copy_2_lines
 	endm
 
-
 ;;  in:
-;;    z flag - draw only attrs
 ;;	  hl - tile address
 ;;    de - screen address
 ;;    ix - attribute address
+;;    z flag - draw only attrs
 draw_tile:
 	ld (.ret+1), sp
 	ld sp, hl
@@ -52,27 +54,6 @@ draw_tile:
 	ld sp, 0
 	ret
 
-	macro fill_2_lines
-		ld (hl), a
-		inc l
-		ld (hl), a
-		inc h
-		ld (hl), a
-		dec l
-		ld (hl), a
-	endm
-
-	macro fill_8_lines
-		fill_2_lines
-		inc h
-		fill_2_lines
-		inc h
-		fill_2_lines
-		inc h
-		fill_2_lines
-	endm
-
-
 ;; hl - map address
 ;; de - screen address
 ;; ix - attribute start
@@ -98,7 +79,8 @@ draw_tile_line:
 	rl b
 	ld hl, tiles_pallette
 	add hl, bc
-	ld ($+4), hl
+
+	ld ($+4), hl ;; hl = (hl)
 	ld hl, (0)
 
 	or a
@@ -121,7 +103,6 @@ draw_map:
 	call update_map_addr
 
 	halt
-	call update_map_addr
 	di
 	ld a, 2
 	out (254), a
@@ -284,10 +265,12 @@ draw_hero:
 	ld (map_position), hl
 	ret
 
+;; check if the map can be moved to the new position
+;; update map address if it's possible
 ;; in:
 ;;   hl - map position (h - row, l - column)
 ;; out:
-;;   z - set if position was changed
+;;   z - set if the position has changed
 update_map_addr:
 	;; bc	 = h * 32 + l
 	ld b, 0
@@ -308,6 +291,7 @@ update_map_addr:
 	adc b
 	ld b, a
 
+	;; find the new hero position and check if it's empty
 	push hl
 	ld hl, map
 	add hl, bc
@@ -323,58 +307,6 @@ update_map_addr:
 	pop hl
 	ret
 
-@test_map:
-	ld a, 0
-	out (254), a
-
-	ld hl, 0x4000+0x800*3
-	ld (hl), 0b101111
-	push hl
-	pop de
-	inc de
-	ld bc, 0xff
-	ldir
-
-	ld hl, 0x4000+0x800*3+0x100
-	ld (hl), 0b011111
-	push hl
-	pop de
-	inc de
-	ld bc, 0xff
-	ldir
-
-	ld hl, 0x4000+0x800*3+0x200
-	ld (hl), 0b110101
-	push hl
-	pop de
-	inc de
-	ld bc, 0xff
-	ldir
-
-.forever
-	halt
-	di
-
-	call draw_map
-
-	ei
-	.5 halt
-
-	ld hl, (.setpos + 1)
-	ld a, l
-	xor 32
-	ld l, a
-	ld (.setpos + 1), hl
-	ld hl, map
-.setpos
-	ld bc, 0
-	add hl, bc
-	ld (map_position), hl
-	jp .forever
-	ret
-
-init_map:
-	ret
 movement_mask:
 	db 0
 

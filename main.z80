@@ -4,19 +4,10 @@
 start:
 	ld sp, 0
 	call set_im2
-	call init_map
 	call draw_map
 	halt
 	ld a, 1
 	out (254), a
-
-; loop:
-; 	ld a, (de)
-; 	or a
-; 	jr z, read
-; 	rst 0x10
-; 	inc de
-; 	jr loop
 
 
 read:
@@ -57,7 +48,6 @@ hello: db 'Press any key!', 0
 
 	include "keyboard.z80"
 	include "screen.z80"
-	include "constants.z80"
 	include "interrupts.z80"
 
 end:
