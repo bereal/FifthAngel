@@ -328,13 +328,13 @@ tile_0:
 
 tile_1:
 	incbin "res/brick.bin"
-	db 21, 21, 21, 21
+	.4 db 2
 
 hero_right:
 	incbin "res/cat-right.bin"
-	db 1, 1, 1, 1
+	.4 db 0x47
 
 hero_left:
 	incbin "res/cat-left.bin"
-	db 1, 1, 1, 1
+	.4 db 0x47
 
