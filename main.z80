@@ -4,9 +4,9 @@
 start:
 	ld sp, 0
 	call set_im2
+	call init_map
 	call draw_map
 	halt
-	ld de, hello
 	ld a, 1
 	out (254), a
 

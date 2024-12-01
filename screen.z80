@@ -21,45 +21,36 @@
 	endm
 
 
-;; hl - tile address
-;; de - screen
+;;  in:
+;;    z flag - draw only attrs
+;;	  hl - tile address
+;;    de - screen address
+;;    ix - attribute address
 draw_tile:
 	ld (.ret+1), sp
 	ld sp, hl
 	ex de, hl
 
+	jr z, .draw_attrs
+
 	copy_8_lines
 
-	; inc h
-	; ld a, 0x20
-	; add l
-	; ld l, a
-	; jr c, .next8
-	; ld a, h
-	; sub 8
-	; ld h, a
-
-.set_next_line_shift
 	ld bc, 0xf920
 	add hl, bc
 
-.next8
 	copy_8_lines
+
+.draw_attrs
+	pop hl
+	ld (ix), l
+	ld (ix+1), h
+	pop hl
+	ld (ix+32), l
+	ld (ix+33), h
 
 .ret
 	ld sp, 0
 	ret
-
-	macro locate_tile_data
-		ld c, (hl)
-		ld b, 0
-		sla c
-		rl b
-		ld hl, tiles_pallette
-		add hl, bc
-		ld ($+4), hl
-		ld hl, (0)
-	endm
 
 	macro fill_2_lines
 		ld (hl), a
@@ -81,6 +72,10 @@ draw_tile:
 		fill_2_lines
 	endm
 
+
+;; hl - map address
+;; de - screen address
+;; ix - attribute start
 draw_tile_line:
 	ld b, 11
 .loop
@@ -88,26 +83,14 @@ draw_tile_line:
 	push hl
 	push de
 
-	xor a
 	ld c, (hl)
-	cp c
-	jr nz, .locate_tile_data
+	ld a, (movement_mask)
+	and c
+	jr nz, .next
 
-	ex de, hl
-	fill_8_lines
-	inc h
-	ld a, 0x20
-	add l
-	ld l, a
-	jr c, .next8
-	ld a, h
-	sub 8
-	ld h, a
-.next8
-	xor a
-	fill_8_lines
-	ex de, hl
-	jp .next
+	ld a, 0b1111
+	and c
+	ld c, a
 
 .locate_tile_data
 	ld b, 0
@@ -118,6 +101,7 @@ draw_tile_line:
 	ld ($+4), hl
 	ld hl, (0)
 
+	or a
 	call draw_tile
 
 .next
@@ -127,61 +111,88 @@ draw_tile_line:
 	inc hl
 	inc de
 	inc de
+	inc ix
+	inc ix
 	djnz .loop
 	ret
 
-	macro swap_subscreen_rim
-		ld a, (draw_tile.set_next_line_shift + 2)
-		xor 0xf9
-		ld (draw_tile.set_next_line_shift + 2), a
-	endm
-
 draw_map:
+	ld hl, (map_position)
+	call update_map_addr
+
+	halt
+	call update_map_addr
 	di
 	ld a, 2
 	out (254), a
 
 	ld hl, (map_addr)
-	ld de, 0x4021
+	ld de, 0x4000
+	ld ix, 0x5800
 	push hl
 	call draw_tile_line
 	pop hl
 
 	ld bc, 32
 	add hl, bc
-	ld de, 0x4061
+	ld de, 0x4040
+	ld ix, 0x5840
 	push hl
 	call draw_tile_line
 	pop hl
 
 	ld bc, 32
 	add hl, bc
-	ld de, 0x40a1
-	push hl
-	call draw_tile_line
-	pop hl
-
-	swap_subscreen_rim
-
-	ld bc, 32
-	add hl, bc
-	ld de, 0x40e1
-	push hl
-	call draw_tile_line
-	pop hl
-
-	swap_subscreen_rim
-
-	ld bc, 32
-	add hl, bc
-	ld de, 0x4821
+	ld de, 0x4080
+	ld ix, 0x5880
 	push hl
 	call draw_tile_line
 	pop hl
 
 	ld bc, 32
 	add hl, bc
-	ld de, 0x4861
+	ld de, 0x40c0
+	ld ix, 0x58c0
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4800
+	ld ix, 0x5900
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4840
+	ld ix, 0x5940
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x4880
+	ld ix, 0x5980
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x48c0
+	ld ix, 0x59c0
+	push hl
+	call draw_tile_line
+	pop hl
+
+	ld bc, 32
+	add hl, bc
+	ld de, 0x5000
+	ld ix, 0x5a00
 	push hl
 	call draw_tile_line
 	pop hl
@@ -189,38 +200,15 @@ draw_map:
 	ld a, 0
 	out (254), a
 
-	ld bc, 32
-	add hl, bc
-	ld de, 0x48a1
-	push hl
-	call draw_tile_line
-	pop hl
-
-	swap_subscreen_rim
-
-	ld bc, 32
-	add hl, bc
-	ld de, 0x48e1
-	push hl
-	call draw_tile_line
-	pop hl
-
-	swap_subscreen_rim
-
-	ld bc, 32
-	add hl, bc
-	ld de, 0x5021
-	push hl
-	call draw_tile_line
-	pop hl
-
 	call draw_hero
 
 	ei
 	ret
 
 draw_hero:
-	ld de, 0x4800 + 32 * 3 + 13
+	ld de, 0x4800 + 32 * 2 + 12
+	ld ix, 0x5800 + 32 * 10 + 12
+	or d  ;; set z = 0
 .sethero
 	ld hl, hero_right
 	call draw_tile
@@ -237,6 +225,9 @@ draw_hero:
 	call update_map_addr
 	ret nz
 
+	ld a, 0b01000000
+	ld (movement_mask), a
+
 	ld (map_position), hl
 	ret
 
@@ -250,6 +241,8 @@ draw_hero:
 	call update_map_addr
 	ret nz
 	ld (map_position), hl
+	ld a, 0b10000000
+	ld (movement_mask), a
 	ret
 
 @move_left:
@@ -264,6 +257,8 @@ draw_hero:
 	call update_map_addr
 	ret nz
 	ld (map_position), hl
+	ld a, 0b00100000
+	ld (movement_mask), a
 	ret
 
 @move_right:
@@ -278,6 +273,14 @@ draw_hero:
 	ld l, a
 	call update_map_addr
 	ret nz
+	ld (map_position), hl
+	ld a, 0b00010000
+	ld (movement_mask), a
+	ret
+
+@setpos:
+	ld bc, 0
+	add hl, bc
 	ld (map_position), hl
 	ret
 
@@ -313,7 +316,7 @@ update_map_addr:
 	add hl, bc
 	ld a, (hl)
 	pop hl
-	or a
+	and 0b1111
 	jr nz, .ret
 	ld (map_addr), hl
 .ret:
@@ -370,28 +373,36 @@ update_map_addr:
 	jp .forever
 	ret
 
-map_position:
-	db 0, 0
+init_map:
+	ret
+movement_mask:
+	db 0
 
+map_position:
+	db 0, 1
 
 map_addr:
 	dw map
 
 map:
-	incbin "res/maze.bin"
+	incbin "res/masked_maze.bin"
 
 tiles_pallette:
 	dw tile_0
 	dw tile_1
 
 tile_0:
-	.32 db 0
+	.4 db 0, 0, 0, 0
 
 tile_1:
 	incbin "res/brick.bin"
+	db 21, 21, 21, 21
 
 hero_right:
 	incbin "res/cat-right.bin"
+	db 1, 1, 1, 1
 
 hero_left:
 	incbin "res/cat-left.bin"
+	db 1, 1, 1, 1
+
