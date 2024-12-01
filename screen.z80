@@ -114,7 +114,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x4040
 	ld ix, 0x5840
@@ -122,7 +122,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x4080
 	ld ix, 0x5880
@@ -130,7 +130,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x40c0
 	ld ix, 0x58c0
@@ -138,7 +138,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x4800
 	ld ix, 0x5900
@@ -146,7 +146,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x4840
 	ld ix, 0x5940
@@ -154,7 +154,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x4880
 	ld ix, 0x5980
@@ -162,7 +162,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x48c0
 	ld ix, 0x59c0
@@ -170,7 +170,7 @@ draw_map:
 	call draw_tile_line
 	pop hl
 
-	ld bc, 32
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld de, 0x5000
 	ld ix, 0x5a00
@@ -199,7 +199,7 @@ draw_hero:
 	ld hl, (map_position)
 	ld a, h
 	inc a
-	cp 32
+	cp MAP_SIZE
 	ret z
 	ld h, a
 
@@ -248,7 +248,7 @@ draw_hero:
 	ld hl, (map_position)
 	ld a, l
 	inc a
-	cp 32
+	cp MAP_SIZE
 	ret z
 
 	ld l, a
