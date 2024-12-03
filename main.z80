@@ -4,6 +4,7 @@
 start:
 	ld sp, 0
 	call set_im2
+	call init_map
 	call draw_map
 	halt
 	ld a, 1
@@ -41,7 +42,7 @@ read:
 	call draw_map
 
 .next
-	.8 halt
+	.2 halt
 	jr read
 
 hello: db 'Press any key!', 0

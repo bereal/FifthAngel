@@ -12,7 +12,7 @@
 
 	ld d, 5
 1
-	srl a
+	rra
 	jr nc, .found
 	inc hl
 	dec d
@@ -28,7 +28,7 @@
 	call read_key
 	or a
 	ret z
-.found_key
+
 	ld hl, defined_keys
 	ld b, a
 	ld c, 0

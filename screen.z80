@@ -1,5 +1,6 @@
 ;; the map size is everywhere assumed to be 32x32
 	define MAP_SIZE 32
+	define ACTIVE_MAP_BUFFER 0xc000
 
 	macro copy_2_lines
 		pop de
@@ -54,136 +55,57 @@ draw_tile:
 	ld sp, 0
 	ret
 
-;; hl - map address
-;; de - screen address
-;; ix - attribute start
-draw_tile_line:
-	ld b, 11
-.loop
-	push bc
-	push hl
-	push de
-
-	ld c, (hl)
-	ld a, (movement_mask)
-	and c
-	jr nz, .next
-
-	ld a, 0b1111
-	and c
-	ld c, a
-
-.locate_tile_data
-	ld b, 0
-	sla c
-	rl b
-	ld hl, tiles_pallette
-	add hl, bc
-
-	ld ($+4), hl ;; hl = (hl)
-	ld hl, (0)
-
-	or a
-	call draw_tile
-
-.next
-	pop de
-	pop hl
-	pop bc
-	inc hl
-	inc de
-	inc de
-	inc ix
-	inc ix
-	djnz .loop
-	ret
-
 draw_map:
-	ld hl, (map_position)
-	call update_map_addr
+	; ld a, 2
+	; out (254), a
 
 	halt
 	di
-	ld a, 2
-	out (254), a
 
-	ld hl, (map_addr)
+	ld hl, ACTIVE_MAP_BUFFER
 	ld de, 0x4000
 	ld ix, 0x5800
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4
 	ld de, 0x4040
 	ld ix, 0x5840
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 2
 	ld de, 0x4080
 	ld ix, 0x5880
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 3
 	ld de, 0x40c0
 	ld ix, 0x58c0
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 4
 	ld de, 0x4800
 	ld ix, 0x5900
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 5
 	ld de, 0x4840
 	ld ix, 0x5940
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 6
 	ld de, 0x4880
 	ld ix, 0x5980
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 7
 	ld de, 0x48c0
 	ld ix, 0x59c0
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld bc, MAP_SIZE
-	add hl, bc
+	call draw_active_map_row
+	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 9
 	ld de, 0x5000
 	ld ix, 0x5a00
-	push hl
-	call draw_tile_line
-	pop hl
-
-	ld a, 0
-	out (254), a
+	call draw_active_map_row
 
 	call draw_hero
-
 	ei
+
+	; ld a, 0
+	; out (254), a
+
+.ret
 	ret
 
 draw_hero:
@@ -210,36 +132,35 @@ draw_hero:
 	ld (movement_mask), a
 
 	ld (map_position), hl
+	call update_map_buffer
 	ret
 
 @move_up:
 	ld hl, (map_position)
-	ld a, h
-	sub 1
-	ret c
+	dec h
+	ret m
 
-	ld h, a
 	call update_map_addr
 	ret nz
 	ld (map_position), hl
 	ld a, 0b10000000
 	ld (movement_mask), a
+	call update_map_buffer
 	ret
 
 @move_left:
 	ld hl, hero_left
 	ld (draw_hero.sethero + 1), hl
 	ld hl, (map_position)
-	ld a, l
-	sub 1
-	ret c
+	dec l
+	ret m
 
-	ld l, a
 	call update_map_addr
 	ret nz
 	ld (map_position), hl
 	ld a, 0b00100000
 	ld (movement_mask), a
+	call update_map_buffer
 	ret
 
 @move_right:
@@ -257,13 +178,14 @@ draw_hero:
 	ld (map_position), hl
 	ld a, 0b00010000
 	ld (movement_mask), a
+	call update_map_buffer
 	ret
 
-@setpos:
-	ld bc, 0
-	add hl, bc
-	ld (map_position), hl
-	ret
+; @setpos:
+; 	ld bc, 0
+; 	add hl, bc
+; 	ld (map_position), hl
+; 	ret
 
 ;; check if the map can be moved to the new position
 ;; update map address if it's possible
@@ -307,6 +229,214 @@ update_map_addr:
 	pop hl
 	ret
 
+;; hl - buffer row address
+;; de - screen row address
+;; ix - row attribute start
+draw_active_map_row:
+	ld b, 11
+
+.loop
+	inc hl
+	xor a
+	cp (hl)
+	jr z, .next
+
+	inc a
+	cp (hl)
+	jr nz, .not_hide
+
+	; hide the tile
+	ld (ix), 0
+	ld (ix+1), 0
+	ld (ix+32), 0
+	ld (ix+33), 0
+	jr .next
+
+.not_hide
+	inc a
+	cp (hl)
+
+	jr nz, .full_redraw
+
+	; unhide the tile
+	push hl
+	inc hl
+	ld ($+4), hl
+	ld hl, (0)
+
+	ld a, (hl)
+	ld (ix), a
+	inc hl
+	ld a, (hl)
+	ld (ix+1), a
+	inc hl
+	ld a, (hl)
+	ld (ix+32),  a
+	inc hl
+	ld a, (hl)
+	ld (ix+33), a
+
+	pop hl
+	jp .next
+
+.full_redraw
+	push hl
+	push de
+	push bc
+	inc hl
+	ld ($+4), hl
+	ld hl, (0)
+	call draw_tile
+	pop bc
+	pop de
+	pop hl
+
+.next
+	.3 inc hl
+	.2 inc de
+	.2 inc ix
+	djnz .loop
+	ret
+
+init_map:
+	ld hl, ACTIVE_MAP_BUFFER
+	ld de, ACTIVE_MAP_BUFFER + 1
+	ld (hl), 0
+	ld bc, 99
+	ldir
+	call update_map_buffer
+	ret
+
+update_map_buffer:
+	ld hl, (map_addr)
+	ld de, ACTIVE_MAP_BUFFER
+	rept 9, idx
+		ex de, hl
+		call copy_map_row_to_buffer
+		ex de, hl
+		ld bc, MAP_SIZE - 11
+		add hl, bc
+	endr
+	ret
+
+;; in: de - map row addr
+;;     hl - buffer row addr
+;; buffer structure: 11 * 9 entries
+;;   1 byte - current tile (with high bit set if the tile is hidden)
+;;   1 byte - pending action (e.g. draw, hide, unhide, keep, draw_hero)
+;;   2 byte - tile data address (passed to the action as hl)
+copy_map_row_to_buffer:
+	ld b, 11
+
+.loop
+	ld a, (de)
+	ld c, (hl)
+
+	cp c
+	jr z, .noop  ; same tile, do nothing
+
+	bit 7, c
+	jr z, .not_hidden
+
+	or a
+	jr z, .noop  ; already hidden
+
+	or 0b10000000
+	cp (hl)
+	res 7, a
+	jr nz, .full_redraw
+
+.unhide
+	ld (hl), a
+	inc hl
+	ld (hl), 2
+	inc hl
+
+	;; todo: unhide here
+	push bc
+	push de
+	ex de, hl
+	ld b, 0
+	ld c, a
+	ld hl, tiles_pallette
+	add hl, bc
+	add hl, bc
+	ld ($+4), hl ; hl = (hl)
+	ld hl, (0)
+
+	ld bc, 0x20
+	add hl, bc
+
+	ex de, hl ; de - tile data address
+
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+
+	pop de
+	pop bc
+
+	inc de
+	djnz .loop
+	ret
+
+.not_hidden
+	or a
+	jr nz, .full_redraw
+
+.hide:
+	ld a, 0b10000000
+	or c
+	ld (hl), a
+	inc hl
+	ld (hl), 1
+
+	.3 inc hl
+	inc de
+	djnz .loop
+	ret
+
+.noop:
+	inc hl
+	xor a
+	ld (hl), a
+	.3 inc hl
+	inc de
+	djnz .loop
+	ret
+
+.full_redraw:
+	ld (hl), a
+	inc hl
+	ld (hl), 3
+	inc hl
+
+	push bc
+	push de
+
+	ex de, hl
+	ld b, 0
+	ld c, a
+	ld hl, tiles_pallette
+	add hl, bc
+	add hl, bc
+	ld ($+4), hl ; hl = (hl)
+	ld hl, (0)
+	ex de, hl ; de - tile data address
+
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+
+	pop de
+	pop bc
+
+	inc de
+	djnz .loop
+	ret
+
 movement_mask:
 	db 0
 
@@ -317,14 +447,14 @@ map_addr:
 	dw map
 
 map:
-	incbin "res/masked_maze.bin"
+	incbin "res/maze.bin"
 
 tiles_pallette:
-	dw tile_0
+	dw 0
 	dw tile_1
 
-tile_0:
-	.4 db 0, 0, 0, 0
+; tile_0:
+; 	.36 db 0
 
 tile_1:
 	incbin "res/brick.bin"
