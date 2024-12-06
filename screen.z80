@@ -56,54 +56,47 @@ draw_tile:
 	ret
 
 draw_map:
-	; ld a, 2
-	; out (254), a
-
 	halt
+	ld a, 2
+	out (254), a
+
 	di
 
 	ld hl, ACTIVE_MAP_BUFFER
 	ld de, 0x4000
 	ld ix, 0x5800
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4
 	ld de, 0x4040
 	ld ix, 0x5840
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 2
 	ld de, 0x4080
 	ld ix, 0x5880
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 3
 	ld de, 0x40c0
 	ld ix, 0x58c0
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 4
 	ld de, 0x4800
 	ld ix, 0x5900
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 5
 	ld de, 0x4840
 	ld ix, 0x5940
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 6
 	ld de, 0x4880
 	ld ix, 0x5980
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 7
 	ld de, 0x48c0
 	ld ix, 0x59c0
 	call draw_active_map_row
-	ld hl, ACTIVE_MAP_BUFFER + 11 * 4 * 9
 	ld de, 0x5000
 	ld ix, 0x5a00
 	call draw_active_map_row
 
 	call draw_hero
-	ei
 
-	; ld a, 0
-	; out (254), a
+	ld a, 0
+	out (254), a
+
+	ei
 
 .ret
 	ret
@@ -446,19 +439,24 @@ map_position:
 map_addr:
 	dw map
 
+;map:
+;incbin "res/maze.bin"
+
 map:
-	incbin "res/maze.bin"
+	include "test_level.z80"
 
-tiles_pallette:
-	dw 0
-	dw tile_1
+	include "tiles.z80"
 
-; tile_0:
-; 	.36 db 0
+;tiles_pallette:
+;	dw 0
+;	dw wall_1
 
-tile_1:
-	incbin "res/brick.bin"
-	.4 db 2
+
+;wall_1: incbin "res/tiles/wall1.bin"
+;	.4 db 7
+
+;wall_2: incbin "res/tiles/wall2.bin"
+;	.4 db 7
 
 hero_right:
 	incbin "res/cat-right.bin"

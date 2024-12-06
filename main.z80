@@ -42,7 +42,7 @@ read:
 	call draw_map
 
 .next
-	.2 halt
+	.6 halt
 	jr read
 
 hello: db 'Press any key!', 0
