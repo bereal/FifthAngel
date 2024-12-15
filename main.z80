@@ -5,7 +5,7 @@ start:
 	ld sp, 0
 	call set_im2
 	call init_map
-	call draw_map
+	call redraw_map
 	halt
 	ld a, 1
 	out (254), a
@@ -20,29 +20,28 @@ read:
 	and 0b01111111
 	cp 1
 	jr nz, .notup
-	call move_up
-	call draw_map
+	call scroll_map_up
+	call redraw_map
 	jr .next
 .notup
 	cp 2
 	jr nz, .notdown
-	call move_down
-	call draw_map
+	call scroll_map_down
+	call redraw_map
 	jr .next
 .notdown
 	cp 3
 	jr nz, .notleft
-	call move_left
-	call draw_map
+	call scroll_map_left
+	call redraw_map
 	jr .next
 .notleft
 	cp 4
 	jr nz, .next
 	call move_right
-	call draw_map
+	call redraw_map
 
 .next
-	.6 halt
 	jr read
 
 hello: db 'Press any key!', 0
@@ -53,3 +52,4 @@ hello: db 'Press any key!', 0
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
+	SAVESNA SNANAME,start

@@ -1,316 +1,427 @@
-;; the map size is everywhere assumed to be 32x32
-	define MAP_SIZE 32
-	define ACTIVE_MAP_BUFFER 0xc000
+	; a map is first drawn to a shadow buffer of size 12x12 tiles (24x24 cells)
+	; because scroll is per cell, there's a 'camera offset' 0, 1 or 2
+	; the result shadow screen offset is then high(view_offset) * 12 * 8 + low(view_offset)
 
-	macro copy_2_lines
-		pop de
-		ld (hl), e
-		inc l
-		ld (hl), d
-		inc h
-		pop de
-		ld (hl), d
-		dec l
-		ld (hl), e
-	endm
+	; units: 2 steps = 1 tile, all coords is by default in steps
 
-	macro copy_8_lines
-		copy_2_lines
-		inc h
-		copy_2_lines
-		inc h
-		copy_2_lines
-		inc h
-		copy_2_lines
-	endm
+
+	;; the map size is everywhere assumed to be 32x32
+	define MAP_SIZE 64
+	define SHADOW_BUFFER 0xc000
+
+map_addr:
+	dw map
+
+map_coord:
+	db 0, 0
+
+drawn_coord:  ; top-left tile that's drawn in the shadow buffer (aligned to a tile)
+	db 0, 0
+
+visible_buffer_addr:
+	dw 0
+
+calc_view_offset:
+	ld hl, (map_coord)
+	ex de, hl
+	ld hl, (drawn_coord)
+
+	ld a, d
+	sub h
+	ld h, a
+
+	ld a, e
+	sub l
+	ld l, a
+	ret
+
+sync_shadow_buffer:
+	call calc_view_offset
+
+;   ld a, h
+; 	cp 3
+; 	jr nc, .full_redraw
+; 	ld a, l
+; 	cp 3
+; 	jr nc, .full_redraw
+
+; 	; update shadow buffer start address
+; 	ex de, hl
+; 	ld hl, SHADOW_BUFFER
+; 	ld a, d
+; 	or a
+; 	jr z, 2F
+; 	ld bc, 24 * 8  ;; next row
+
+; 1
+; 	add hl, bc
+; 	dec d
+; 	jr nz, 1B
+
+; 2
+; 	add hl, de
+; 	ld (shadow_buffer_addr), hl
+; 	ret
+
+.full_redraw
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+
+	ld hl, (map_coord)
+	res 0, h
+	res 0, l
+	ld (drawn_coord), hl
+	ex de, hl
+
+	call redraw_map
+	ret
+
+
+copy_buffer_to_screen:
+	halt
+
+	ld a, 2
+	out (254), a
+	di
+	ld hl, (visible_buffer_addr)
+	ld a, b
+	ld b, 0
+
+	ld (.ret+1), sp
+
+	exx
+	ld hl, 0x4000
+
+.loop:
+	ld (.restore_output_2 + 1), hl
+	exx
+
+	; read 12 bytes
+	ld sp, hl
+	pop af
+	pop bc
+	pop de
+	exx
+	ex af, af'
+	ld bc, 12
+	add hl, bc
+	pop af
+	pop bc
+	pop de
+
+	ld (.restore_input_1 + 1), sp
+	ld sp, hl
+
+	; write 12 bytes
+	push de
+	push bc
+	push af
+	exx
+	ex af, af'
+	push de
+	push bc
+	push af
+
+.restore_input_1:
+	ld hl, 0
+	ld sp, hl
+
+	; read 10 bytes
+	pop af
+	pop bc
+	pop de
+	exx
+	ex af, af'
+	ld bc, 10
+	add hl, bc
+	pop bc
+	pop de
+	pop af ;;
+
+	ld (.restore_input_2 + 1), sp
+	ld sp, hl
+
+	push de
+	push bc
+	exx
+	ex af, af'
+	push de
+	push bc
+	push af
+
+.restore_input_2:
+	ld hl, 0
+	exx
+
+.restore_output_2:
+	ld hl, 0
+	inc h
+	ld a, 7
+	and h
+	jr nz, .loop
+	ld a, h
+	sub 8
+	ld h, a
+	cp 0x50
+	jr z, .ret
+	ld a, l
+	add 0x20
+	ld l, a
+	jr nc, .loop
+	ld a, h
+	add a, 8
+	ld h, a
+	cp 0x58
+	jp nz, .loop
+
+.ret
+	ld sp, 0
+	ei
+	ld a, 0
+	out (254), a
+	ret
 
 ;;  in:
-;;	  hl - tile address
+;;	  (hl) - tile number
 ;;    de - screen address
 ;;    ix - attribute address
 ;;    z flag - draw only attrs
 draw_tile:
+	ld a, (hl)
+	ld c, a
+	ld b, 0
+	ld hl, tiles_pallette
+	add hl, bc
+	add hl, bc
+	ld ($+4), hl ; hl = (hl)
+	ld hl, (0)
+
 	ld (.ret+1), sp
 	ld sp, hl
 	ex de, hl
+	ld bc, 24
 
-	jr z, .draw_attrs
+	rept 8, idx
+		pop de
+		ld (hl), e
+		inc l
+		ld (hl), d
+		add hl, bc
+		pop de
+		ld (hl), d
+		dec l
+		ld (hl), e
 
-	copy_8_lines
+		if idx < 7
+			add hl, bc
+		endif
+	endr
 
-	ld bc, 0xf920
-	add hl, bc
+	; copy_8_tile_lines_to_buffer
 
-	copy_8_lines
+	; ld bc, 0xf920
+	; add hl, bc
+
+	; copy_8_tile_lines_to_buffer
 
 .draw_attrs
-	pop hl
-	ld (ix), l
-	ld (ix+1), h
-	pop hl
-	ld (ix+32), l
-	ld (ix+33), h
+	; pop hl
+	; ld (ix), l
+	; ld (ix+1), h
+	; pop hl
+	; ld (ix+32), l
+	; ld (ix+33), h
 
 .ret
 	ld sp, 0
 	ret
 
-draw_map:
-	halt
-	ld a, 2
-	out (254), a
-
+redraw_map:
 	di
+	ld hl, (map_addr)
 
-	ld hl, ACTIVE_MAP_BUFFER
-	ld de, 0x4000
-	ld ix, 0x5800
-	call draw_active_map_row
-	ld de, 0x4040
-	ld ix, 0x5840
-	call draw_active_map_row
-	ld de, 0x4080
-	ld ix, 0x5880
-	call draw_active_map_row
-	ld de, 0x40c0
-	ld ix, 0x58c0
-	call draw_active_map_row
-	ld de, 0x4800
-	ld ix, 0x5900
-	call draw_active_map_row
-	ld de, 0x4840
-	ld ix, 0x5940
-	call draw_active_map_row
-	ld de, 0x4880
-	ld ix, 0x5980
-	call draw_active_map_row
-	ld de, 0x48c0
-	ld ix, 0x59c0
-	call draw_active_map_row
-	ld de, 0x5000
-	ld ix, 0x5a00
-	call draw_active_map_row
-
-	call draw_hero
-
-	ld a, 0
-	out (254), a
-
+	rept 12, idx
+		push hl
+		; ld hl, map_addr + 11 * idx
+		ld de, SHADOW_BUFFER + 12 * 4 * 8 * idx
+		call draw_map_row
+		pop hl
+		ld bc, 32
+		add hl, bc
+	endr
 	ei
 
 .ret
 	ret
 
 draw_hero:
-	ld de, 0x4800 + 32 * 2 + 12
-	ld ix, 0x5800 + 32 * 10 + 12
-	or d  ;; set z = 0
+; 	ld de, SHADOW_BUFFER + 11 * 4 * 8 * 5 + 6 * 2; 0x4800 + 32 * 2 + 12
+; 	ld ix, 0x5800 + 32 * 10 + 12
+; 	or d  ;; set z = 0
 .sethero
 	ld hl, hero_right
-	call draw_tile
+; 	call draw_tile
 	ret
 
-@move_down:
-	ld hl, (map_position)
+@scroll_map_down:
+	ld hl, (map_coord)
 	ld a, h
 	inc a
 	cp MAP_SIZE
 	ret z
 	ld h, a
+	ld (map_coord), hl
 
-	call update_map_addr
-	ret nz
+	and 1
+	jr z, .next_tile
 
-	ld a, 0b01000000
-	ld (movement_mask), a
+	ld hl, SHADOW_BUFFER + 12 * 2 * 8
+	ld (visible_buffer_addr), hl
+	jr .draw
 
-	ld (map_position), hl
-	call update_map_buffer
+.next_tile
+	ld hl, (map_addr)
+	ld bc, MAP_SIZE / 2
+	add hl, bc
+	ld (map_addr), hl
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+
+.draw
+	call redraw_map
+	call copy_buffer_to_screen
+
 	ret
 
-@move_up:
-	ld hl, (map_position)
+@scroll_map_up:
+	ld hl, (map_coord)
 	dec h
 	ret m
+	ld (map_coord), hl
 
-	call update_map_addr
-	ret nz
-	ld (map_position), hl
-	ld a, 0b10000000
-	ld (movement_mask), a
-	call update_map_buffer
+	bit 0, h
+	jr nz, .prev_tile
+
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+	jr .draw
+
+.prev_tile:
+	ld hl, (map_addr)
+	xor a
+	ld bc, MAP_SIZE / 2
+	sbc hl, bc
+	ld (map_addr), hl
+	ld hl, SHADOW_BUFFER + 12 * 2 * 8
+	ld (visible_buffer_addr), hl
+
+.draw
+	call redraw_map
+	call copy_buffer_to_screen
 	ret
 
-@move_left:
-	ld hl, hero_left
-	ld (draw_hero.sethero + 1), hl
-	ld hl, (map_position)
+@scroll_map_left:
+	ld hl, (map_coord)
 	dec l
 	ret m
+	ld (map_coord), hl
 
-	call update_map_addr
-	ret nz
-	ld (map_position), hl
-	ld a, 0b00100000
-	ld (movement_mask), a
-	call update_map_buffer
+	bit 0, l
+	jr nz, .prev_tile
+
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+	jr .draw
+
+.prev_tile:
+	ld hl, (map_addr)
+	dec hl
+	ld (map_addr), hl
+	ld hl, SHADOW_BUFFER + 1
+	ld (visible_buffer_addr), hl
+
+.draw
+	call redraw_map
+	call copy_buffer_to_screen
 	ret
 
 @move_right:
-	ld hl, hero_right
-	ld (draw_hero.sethero + 1), hl
-	ld hl, (map_position)
+	ld hl, (map_coord)
 	ld a, l
 	inc a
 	cp MAP_SIZE
 	ret z
 
 	ld l, a
-	call update_map_addr
-	ret nz
-	ld (map_position), hl
-	ld a, 0b00010000
-	ld (movement_mask), a
-	call update_map_buffer
-	ret
+	ld (map_coord), hl
 
-; @setpos:
-; 	ld bc, 0
-; 	add hl, bc
-; 	ld (map_position), hl
-; 	ret
+	and 1
+	jr z, .next_tile
 
-;; check if the map can be moved to the new position
-;; update map address if it's possible
-;; in:
-;;   hl - map position (h - row, l - column)
-;; out:
-;;   z - set if the position has changed
-update_map_addr:
-	;; bc	 = h * 32 + l
-	ld b, 0
-	ld a, h
-	sla a
-	rl b
-	sla a
-	rl b
-	sla a
-	rl b
-	sla a
-	rl b
-	sla a
-	rl b
-	add l
-	ld c, a
-	ld a, 0
-	adc b
-	ld b, a
+	ld hl, SHADOW_BUFFER + 1
+	ld (visible_buffer_addr), hl
+	jr .draw
 
-	;; find the new hero position and check if it's empty
-	push hl
-	ld hl, map
-	add hl, bc
-	push hl
-	ld bc, 32 * 5 + 6
-	add hl, bc
-	ld a, (hl)
-	pop hl
-	and 0b1111
-	jr nz, .ret
+.next_tile:
+	ld hl, (map_addr)
+	inc hl
 	ld (map_addr), hl
-.ret:
-	pop hl
+
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+
+.draw:
+	call redraw_map
+	call copy_buffer_to_screen
 	ret
 
-;; hl - buffer row address
-;; de - screen row address
-;; ix - row attribute start
-draw_active_map_row:
-	ld b, 11
+
+;; hl - map row address
+;; de - shadow buffer row address
+draw_map_row:
+	ld b, 12
 
 .loop
-	inc hl
-	xor a
-	cp (hl)
-	jr z, .next
-
-	inc a
-	cp (hl)
-	jr nz, .not_hide
-
-	; hide the tile
-	ld (ix), 0
-	ld (ix+1), 0
-	ld (ix+32), 0
-	ld (ix+33), 0
-	jr .next
-
-.not_hide
-	inc a
-	cp (hl)
-
-	jr nz, .full_redraw
-
-	; unhide the tile
 	push hl
-	inc hl
-	ld ($+4), hl
-	ld hl, (0)
-
-	ld a, (hl)
-	ld (ix), a
-	inc hl
-	ld a, (hl)
-	ld (ix+1), a
-	inc hl
-	ld a, (hl)
-	ld (ix+32),  a
-	inc hl
-	ld a, (hl)
-	ld (ix+33), a
-
-	pop hl
-	jp .next
-
-.full_redraw
-	push hl
-	push de
 	push bc
-	inc hl
-	ld ($+4), hl
-	ld hl, (0)
+	push de
 	call draw_tile
-	pop bc
 	pop de
+	pop bc
 	pop hl
 
-.next
-	.3 inc hl
+	inc hl
 	.2 inc de
-	.2 inc ix
 	djnz .loop
+
 	ret
 
 init_map:
-	ld hl, ACTIVE_MAP_BUFFER
-	ld de, ACTIVE_MAP_BUFFER + 1
-	ld (hl), 0
-	ld bc, 99
+	ld hl, 0x5800
+	ld de, 0x5801
+	ld (hl), 15
+	ld bc, 255
 	ldir
-	call update_map_buffer
+
+	ld hl, 0x5900
+	ld de, 0x5901
+	ld (hl), 23
+	ld bc, 255
+	ldir
+
+
+	ld hl, map
+	ld (map_addr), hl
+	ld hl, 0
+	ld (map_coord), hl
+	ld (drawn_coord), hl
+	ld hl, SHADOW_BUFFER
+	ld (visible_buffer_addr), hl
+
+	call redraw_map
+	call copy_buffer_to_screen
 	ret
 
-update_map_buffer:
-	ld hl, (map_addr)
-	ld de, ACTIVE_MAP_BUFFER
-	rept 9, idx
-		ex de, hl
-		call copy_map_row_to_buffer
-		ex de, hl
-		ld bc, MAP_SIZE - 11
-		add hl, bc
-	endr
-	ret
 
 ;; in: de - map row addr
 ;;     hl - buffer row addr
@@ -327,6 +438,8 @@ copy_map_row_to_buffer:
 
 	cp c
 	jr z, .noop  ; same tile, do nothing
+
+	jr .full_redraw
 
 	bit 7, c
 	jr z, .not_hidden
@@ -430,22 +543,12 @@ copy_map_row_to_buffer:
 	djnz .loop
 	ret
 
-movement_mask:
-	db 0
-
-map_position:
-	db 0, 1
-
-map_addr:
-	dw map
-
 ;map:
 ;incbin "res/maze.bin"
 
 map:
 	include "test_level.z80"
-
-	include "tiles.z80"
+	include "res/tiles_palette.z80"
 
 ;tiles_pallette:
 ;	dw 0
