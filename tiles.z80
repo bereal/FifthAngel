@@ -1,5 +1,5 @@
 tiles_pallette:
-	dw 0
+	dw empty
 	dw t_1
 	dw t_2
 	dw t_3
@@ -25,6 +25,10 @@ tiles_pallette:
 	dw t_23
 	dw t_24
 	dw t_25
+
+empty
+	.32 db 0
+	.4 db 7
 
 t_1
 	incbin "res/tiles/01-wall-north.bin"
