@@ -15,10 +15,10 @@ map_coord:
 	db 0, 0
 
 map_addr:
-	dw map
+	dw test_level
 
-map:
-	include "test_level.z80"
+test_level:
+	include "res/test_level.z80"
 
 prepare_map_row:
 	ld b, BUFFER_WIDTH
@@ -27,7 +27,7 @@ prepare_map_row:
 	push hl
 
 	ld a, (hl)
-	ld hl, tiles_palette
+	ld hl, tiles_table
 	ld c, a
 	ld b, 0
 	add hl, bc
@@ -63,7 +63,7 @@ prepare_map_row:
 	di
 	ld hl, (map_addr)
 	ld de, BUFFER_ADDR
-	ld b, 10
+	ld b, 32
 
 .loop
 	push bc
@@ -230,7 +230,7 @@ copy_line:
 @scroll_map_right:
 	ld hl, (map_coord)
 	inc l
-	ld a, 32
+	ld a, 32 * 2 - VISIBLE_BUFFER_WIDTH
 	cp l
 	ret z
 	ld (map_coord), hl
@@ -240,7 +240,6 @@ copy_line:
 	ld (visible_buffer_addr), hl
 	ld a, 1
 	ld (dirty_screen), a
-	; call redraw_map
 	ret
 
 @scroll_map_left:
@@ -257,23 +256,34 @@ copy_line:
 	ld (dirty_screen), a
 	ret
 
-	; do_copy_line visible_buffer_addr, 0x4040, 0x58
+@scroll_map_down:
+	ld hl, (map_coord)
+	inc h
+	ld a, 32 * 2 - VISIBLE_BUFFER_WIDTH
+	cp h
+	ret z
+	ld (map_coord), hl
 
-	; do_copy_line visible_buffer_addr, 0x4060, 0x58
-
-	; do_copy_line visible_buffer_addr, 0x4080, 0x58
-
-	; do_copy_line visible_buffer_addr, 0x40a0, 0x58
-
-	; do_copy_line visible_buffer_addr, 0x40c0, 0x58
-
-	; do_copy_line visible_buffer_addr, 0x40e0, 0x58
-
-	; do_copy_line visible_buffer_addr, 0x4800, 0x59
-
-	; do_copy_line visible_buffer_addr, 0x4820, 0x59
-
-	; do_copy_line visible_buffer_addr, 0x4840, 0x59
-
+	ld hl, (visible_buffer_addr)
+	ld bc, BUFFER_WIDTH * 6
+	add hl, bc
+	ld (visible_buffer_addr), hl
+	ld a, 1
+	ld (dirty_screen), a
 	ret
+
+@scroll_map_up:
+	ld hl, (map_coord)
+	dec h
+	ret m
+	ld (map_coord), hl
+
+	ld hl, (visible_buffer_addr)
+	ld bc, 0x10000 - BUFFER_WIDTH * 6
+	add hl, bc
+	ld (visible_buffer_addr), hl
+	ld a, 1
+	ld (dirty_screen), a
+	ret
+
 	endmodule
