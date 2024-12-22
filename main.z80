@@ -19,18 +19,18 @@ read:
 	or a
 	jr z, read
 	and 0b01111111
-; 	cp 1
-; 	jr nz, .notup
-; 	call scroll_map_up
-; 	call redraw_map
-; 	jr .next
-; .notup
-; 	cp 2
-; 	jr nz, .notdown
-; 	call scroll_map_down
-; 	call redraw_map
-; 	jr .next
-; .notdown
+	cp 1
+	jr nz, .notup
+	call scroll_map_up
+	; call redraw_map
+	jr .next
+.notup
+	cp 2
+	jr nz, .notdown
+	call scroll_map_down
+	; call redraw_map
+	jr .next
+.notdown
 	cp 3
 	jr nz, .notleft
 	call scroll_map_left
@@ -48,12 +48,10 @@ read:
 	jr read
 
 hello: db 'Press any key!', 0
-
 	include "keyboard.z80"
-	; include "screen.z80"
+
 	include "map.z80"
 	include "res/tiles.z80"
-	include "res/tiles_palette.z80"
 	include "interrupts.z80"
 
 end:
