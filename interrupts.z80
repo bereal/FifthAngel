@@ -19,6 +19,57 @@ set_im2:
 
 routine:
     di
-    ;; TODO
+
+    push af
+    push bc
+    push de
+    push hl
+    push ix
+    push iy
+
+    ex af, af'
+    exx
+
+    push af
+    push bc
+    push de
+    push hl
+
+    ld a, 1
+    out (254), a
+
+    ld a, (dirty_screen)
+    or a
+    jr z, .skip_redraw
+
+    xor a
+    ld bc, 0x3ff
+1
+    dec bc
+    cp b
+    jr nz, 1B
+
+    call copy_buffer
+
+.skip_redraw:
+    ld a, 2
+    out (254), a
+
+    pop hl
+    pop de
+    pop bc
+    pop af
+
+    ex af, af'
+    exx
+
+    pop iy
+    pop ix
+    pop hl
+    pop de
+    pop bc
+    pop af
+
     ei
     reti
+

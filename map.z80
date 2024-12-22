@@ -1,0 +1,279 @@
+	module map
+
+	define BUFFER_ADDR 0xc000
+	define BUFFER_WIDTH 32
+	define VISIBLE_BUFFER_WIDTH 11
+	define LINE_OFFSET (BUFFER_WIDTH - VISIBLE_BUFFER_WIDTH) * 6
+
+visible_buffer_addr:
+	dw BUFFER_ADDR
+
+visible_offset:
+	db 0, 0
+
+map_coord:
+	db 0, 0
+
+map_addr:
+	dw map
+
+map:
+	include "test_level.z80"
+
+prepare_map_row:
+	ld b, BUFFER_WIDTH
+.loop
+	push bc
+	push hl
+
+	ld a, (hl)
+	ld hl, tiles_palette
+	ld c, a
+	ld b, 0
+	add hl, bc
+	add hl, bc
+
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+
+	.6 ldi
+
+	ex de, hl
+	ld bc, 6 * BUFFER_WIDTH - 6
+	add hl, bc
+	ex de, hl
+
+	.6 ldi
+
+	ex de, hl
+	ld bc, 0x10000 - 6 * BUFFER_WIDTH
+	add hl, bc
+	ex de, hl
+
+	pop hl
+	inc hl
+	pop bc
+	djnz .loop
+
+	ret
+
+@redraw_map:
+	di
+	ld hl, (map_addr)
+	ld de, BUFFER_ADDR
+	ld b, 10
+
+.loop
+	push bc
+	call prepare_map_row
+	ld bc, 32 - BUFFER_WIDTH
+	add hl, bc
+	ex de, hl
+	ld bc, BUFFER_WIDTH * 6
+	add hl, bc
+	ex de, hl
+	pop bc
+	djnz .loop
+	ld a, 1
+	ld (dirty_screen), a
+	ei
+	ret
+
+@dirty_screen:
+	db 0
+
+
+;; hl - buffer address
+;; de - attr address
+;; hl' - bitmap address
+;; bc' - 0xf901
+copy_line:
+	ld (.ret + 1), sp
+	ld b, 22
+.loop
+	ld a, (hl)
+	inc hl
+
+	ld (de), a
+	inc e
+	or a
+	jr z, .skipdraw
+
+	ld a, (hl)
+	ld (.setsp+1), a
+	inc hl
+	ld a, (hl)
+	ld (.setsp+2), a
+	inc hl
+	exx
+.setsp
+	ld sp, 0
+
+	rept 4, idx
+		pop de
+		ld (hl), e
+		inc h
+		ld (hl), d
+		if idx < 3
+			inc h
+		endif
+	endr
+
+	add hl, bc
+	exx
+	djnz .loop
+	jp .ret
+
+.skipdraw
+	inc hl
+	inc hl
+	exx
+	inc l
+	exx
+	djnz .loop
+.ret
+	ld sp, 0
+  	ret
+
+	macro do_copy_line bitmap_row, attr_high_byte
+		; ld hl, (buf_addr)
+		ld de, attr_high_byte * 0x100 + low(bitmap_row)
+		exx
+		ld hl, bitmap_row
+		exx
+		call copy_line
+	endm
+
+	macro next_line
+		ld bc, (BUFFER_WIDTH - VISIBLE_BUFFER_WIDTH) * 6
+		add hl, bc
+	endm
+
+@copy_buffer:
+	; hl - buffer address
+	exx
+	ld bc, 0xf901
+	exx
+
+	ld hl, (visible_buffer_addr)
+	do_copy_line 0x4000, 0x58
+	next_line
+
+	do_copy_line 0x4020, 0x58
+	next_line
+
+	do_copy_line 0x4040, 0x58
+	next_line
+
+	do_copy_line 0x4060, 0x58
+	next_line
+
+	do_copy_line 0x4080, 0x58
+	next_line
+
+	do_copy_line 0x40a0, 0x58
+	next_line
+
+	do_copy_line 0x40c0, 0x58
+	next_line
+
+	do_copy_line 0x40e0, 0x58
+	next_line
+
+	do_copy_line 0x4800, 0x59
+	next_line
+
+	do_copy_line 0x4820, 0x59
+	next_line
+
+	do_copy_line 0x4840, 0x59
+	next_line
+
+	do_copy_line 0x4860, 0x59
+	next_line
+
+	do_copy_line 0x4880, 0x59
+	next_line
+
+	do_copy_line 0x48a0, 0x59
+	next_line
+
+	do_copy_line 0x48c0, 0x59
+	next_line
+
+	do_copy_line 0x48e0, 0x59
+	next_line
+
+	do_copy_line 0x5000, 0x5a
+	next_line
+
+	do_copy_line 0x5020, 0x5a
+	next_line
+
+	do_copy_line 0x5040, 0x5a
+	next_line
+
+	do_copy_line 0x5060, 0x5a
+	next_line
+
+	do_copy_line 0x5080, 0x5a
+	next_line
+
+	do_copy_line 0x50a0, 0x5a
+
+	ld a, 0
+	ld (dirty_screen), a
+	ret
+
+@scroll_map_right:
+	ld hl, (map_coord)
+	inc l
+	ld a, 32
+	cp l
+	ret z
+	ld (map_coord), hl
+
+	ld hl, (visible_buffer_addr)
+	.3 inc hl
+	ld (visible_buffer_addr), hl
+	ld a, 1
+	ld (dirty_screen), a
+	; call redraw_map
+	ret
+
+@scroll_map_left:
+	ld hl, (map_coord)
+	dec l
+	ret m
+	ld (map_coord), hl
+
+	ld hl, (visible_buffer_addr)
+	.3 dec hl
+	ld (visible_buffer_addr), hl
+	; call redraw_map
+	ld a, 1
+	ld (dirty_screen), a
+	ret
+
+	; do_copy_line visible_buffer_addr, 0x4040, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x4060, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x4080, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x40a0, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x40c0, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x40e0, 0x58
+
+	; do_copy_line visible_buffer_addr, 0x4800, 0x59
+
+	; do_copy_line visible_buffer_addr, 0x4820, 0x59
+
+	; do_copy_line visible_buffer_addr, 0x4840, 0x59
+
+	ret
+	endmodule
