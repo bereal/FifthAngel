@@ -1,18 +1,19 @@
 	module map
 
 	;; sizes in tiles
-	define MAP_SIZE 32
-	define BUFFER_ADDR 0xc000
-	define BUFFERED_WINDOW_WIDTH 12
-	define BUFFERED_WINDOW_HEIGHT 12
-	define VISIBLE_WINDOW_WIDTH 11
-	define VISIBLE_WINDOW_HEIGHT 11
+	define MapSize 32
+	define BufferAddr 0xc000
+	define Buffer_TW 12
+	define Buffer_TH 12
+	define VisibleBuffer_TW 11
+	define VisibleBuffer_TH 11
 
-	define BUFFERED_CELL_SIZE 3
-	define TILE_SIZE 2
-	define BUFFERED_TILE_ROW_SIZE 6
-	define BUFFER_ROW_OFFSET BUFFERED_TILE_ROW_SIZE * BUFFERED_WINDOW_WIDTH
-	define LAST_BUFFERED_TILE_ROW_OFFSET BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_HEIGHT - 1) * BUFFERED_WINDOW_WIDTH * TILE_SIZE
+	define BufferedCellSize 3
+	define TileSize 2
+	define TileRowSize 6
+	define BufferRowSize TileRowSize * Buffer_TW
+	define BufferSize BufferRowSize * Buffer_TH * TileSize
+	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
 
 @dirty_screen:
 	db 0
@@ -47,14 +48,14 @@ test_level:
 	macro prepare_tile
 		resolve_tile
 
-		.BUFFERED_TILE_ROW_SIZE ldi
+		.TileRowSize ldi
 
 		ex de, hl
-		ld bc, BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_WIDTH - 1)
+		ld bc, TileRowSize * (Buffer_TW - 1)
 		add hl, bc
 		ex de, hl
 
-		.BUFFERED_TILE_ROW_SIZE ldi
+		.TileRowSize ldi
 	endm
 
 
@@ -63,7 +64,7 @@ prepare_tile:
 	ret
 
 prepare_map_row:
-	ld b, BUFFERED_WINDOW_WIDTH
+	ld b, Buffer_TW
 .loop
 	push bc
 	push hl
@@ -71,7 +72,7 @@ prepare_map_row:
 	prepare_tile
 
 	ex de, hl
-	ld bc, - BUFFERED_TILE_ROW_SIZE * BUFFERED_WINDOW_WIDTH
+	ld bc, - TileRowSize * Buffer_TW
 	add hl, bc
 	ex de, hl
 
@@ -83,7 +84,7 @@ prepare_map_row:
 	ret
 
 prepare_map_column:
-	ld b, BUFFERED_WINDOW_WIDTH
+	ld b, Buffer_TW
 .loop
 	push bc
 	push hl
@@ -91,13 +92,13 @@ prepare_map_column:
 	prepare_tile
 
 	ex de, hl
-	ld bc, BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_WIDTH - 1)
+	ld bc, TileRowSize * (Buffer_TW - 1)
 	add hl, bc
 	ex de, hl
 
 
 	pop hl
-	ld bc, MAP_SIZE
+	ld bc, MapSize
 	add hl, bc
 	pop bc
 	djnz .loop
@@ -107,16 +108,16 @@ prepare_map_column:
 ; assume that the buffer is scrolled maximum to the right
 scroll_buffer_right:
 	di
-	ld hl, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE
-	ld de, BUFFER_ADDR
+	ld hl, BufferAddr + TileRowSize
+	ld de, BufferAddr
 	exx
-	ld b, BUFFERED_WINDOW_HEIGHT * TILE_SIZE
+	ld b, Buffer_TH * TileSize
 .loop
 	exx
-	ld bc, (BUFFERED_WINDOW_WIDTH - 1) * BUFFERED_TILE_ROW_SIZE
+	ld bc, BufferRowSize - TileRowSize
 	ldir
 
-	ld bc, BUFFERED_TILE_ROW_SIZE
+	ld bc, TileRowSize
 	add hl, bc
 	ex de, hl
 	add hl, bc
@@ -130,25 +131,25 @@ scroll_buffer_right:
 
 
 	; draw missing column on the right
-	ld bc, BUFFERED_WINDOW_WIDTH - 1
+	ld bc, Buffer_TW - 1
 	add hl, bc
-	ld de, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_WIDTH - 1)
+	ld de, BufferAddr + BufferRowSize - TileRowSize
 	call prepare_map_column
 	ei
 	ret
 
 scroll_buffer_left:
 	di
-	ld hl, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_WIDTH - 1) - 1
-	ld de, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * BUFFERED_WINDOW_WIDTH - 1
+	ld hl, BufferAddr + BufferRowSize - TileRowSize - 1
+	ld de, BufferAddr + BufferRowSize - 1
 	exx
-	ld b, BUFFERED_WINDOW_HEIGHT * TILE_SIZE
+	ld b, Buffer_TH * TileSize
 
 .loop
 	exx
-	ld bc, (BUFFERED_WINDOW_WIDTH - 1) * BUFFERED_TILE_ROW_SIZE
+	ld bc, (Buffer_TW - 1) * TileRowSize
 	lddr
-	ld bc, BUFFERED_TILE_ROW_SIZE * (2 * BUFFERED_WINDOW_WIDTH - 1)
+	ld bc, TileRowSize * (2 * Buffer_TW - 1)
 	add hl, bc
 	ex de, hl
 	add hl, bc
@@ -160,44 +161,44 @@ scroll_buffer_left:
 	dec hl
 	ld (buffered_map_addr), hl
 
-	ld de, BUFFER_ADDR
+	ld de, BufferAddr
 	call prepare_map_column
 	ei
 	ret
 
 scroll_buffer_down:
 	di
-	ld hl, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * BUFFERED_WINDOW_WIDTH * TILE_SIZE
-	ld de, BUFFER_ADDR
-	ld bc, LAST_BUFFERED_TILE_ROW_OFFSET
+	ld hl, BufferAddr + BufferRowSize * TileSize
+	ld de, BufferAddr
+	ld bc, LastTileRowOffset
 	ldir
 
 	ld hl, (buffered_map_addr)
-	ld bc, MAP_SIZE
+	ld bc, MapSize
 	add hl, bc
 	ld (buffered_map_addr), hl
 
 	; draw missing row on the bottom
-	ld bc, MAP_SIZE * (BUFFERED_WINDOW_WIDTH - 1)
+	ld bc, MapSize * (Buffer_TW - 1)
 	add hl, bc
-	ld de, BUFFER_ADDR + LAST_BUFFERED_TILE_ROW_OFFSET
+	ld de, BufferAddr + LastTileRowOffset
 	call prepare_map_row
 	ei
 	ret
 
 scroll_buffer_up:
 	di
-	ld hl, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_HEIGHT - 1) * BUFFERED_WINDOW_WIDTH * TILE_SIZE - 1
-	ld de, BUFFER_ADDR + BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_HEIGHT) * TILE_SIZE * BUFFERED_WINDOW_WIDTH - 1
-	ld bc, BUFFERED_TILE_ROW_SIZE * (BUFFERED_WINDOW_HEIGHT - 1) * BUFFERED_WINDOW_WIDTH * TILE_SIZE
+	ld hl, BufferAddr + BufferSize - BufferRowSize * TileSize - 1
+	ld de, BufferAddr + BufferSize - 1
+	ld bc, BufferSize - BufferRowSize * TileSize
 	lddr
 
 	ld hl, (buffered_map_addr)
-	ld bc, -MAP_SIZE
+	ld bc, -MapSize
 	add hl, bc
 	ld (buffered_map_addr), hl
 
-	ld de, BUFFER_ADDR
+	ld de, BufferAddr
 	call prepare_map_row
 	ei
 	ret
@@ -205,16 +206,16 @@ scroll_buffer_up:
 @redraw_map:
 	di
 	ld hl, (buffered_map_addr)
-	ld de, BUFFER_ADDR
+	ld de, BufferAddr
 	ld b, 32
 
 .loop
 	push bc
 	call prepare_map_row
-	ld bc, MAP_SIZE - BUFFERED_WINDOW_WIDTH
+	ld bc, MapSize - Buffer_TW
 	add hl, bc
 	ex de, hl
-	ld bc, BUFFER_ROW_OFFSET
+	ld bc, BufferRowSize
 	add hl, bc
 	ex de, hl
 	pop bc
@@ -287,7 +288,7 @@ copy_line:
 	endm
 
 	macro next_line
-		ld bc, (BUFFERED_WINDOW_WIDTH - VISIBLE_WINDOW_WIDTH) * 6
+		ld bc, (Buffer_TW - VisibleBuffer_TW) * 6
 		add hl, bc
 	endm
 
@@ -300,13 +301,13 @@ copy_line:
 	ld b, h
 	ld d, 0
 	ld e, l
-	ld hl, BUFFER_ADDR
+	ld hl, BufferAddr
 	.3 add hl, de
 
 	xor a
 	or b
 	jr z, 2F
-	ld de, BUFFER_ROW_OFFSET
+	ld de, BufferRowSize
 1
 	add hl, de
 	djnz 1B
@@ -384,7 +385,7 @@ copy_line:
 @scroll_map_right:
 	ld hl, (map_coord)
 	inc hl
-	ld a, MAP_SIZE * 2 - VISIBLE_WINDOW_WIDTH * 2 + 1
+	ld a, MapSize * 2 - VisibleBuffer_TW * 2 + 1
 	cp l
 	ret z
 	ld (map_coord), hl
@@ -422,7 +423,7 @@ copy_line:
 @scroll_map_down:
 	ld hl, (map_coord)
 	inc h
-	ld a, MAP_SIZE * 2 - VISIBLE_WINDOW_HEIGHT * 2 + 1
+	ld a, MapSize * 2 - VisibleBuffer_TH * 2 + 1
 	cp h
 	ret z
 	ld (map_coord), hl
