@@ -1,0 +1,125 @@
+	module sprite
+
+	macro copy_double_row
+		pop de
+		ld a, (hl)
+		and b
+		and e
+		or d
+		ld (hl), a
+
+		pop de
+		inc l
+		ld a, (hl)
+		and c
+		and e
+		or d
+		ld (hl), a
+
+		pop de
+		inc h
+		ld a, (hl)
+		and c
+		and e
+		or d
+		ld (hl), a
+
+		pop de
+		dec l
+		ld a, (hl)
+		and b
+		and e
+		or d
+		ld (hl), a
+
+		inc h
+	endm
+
+;; hl - sprite address
+;; de - screen address
+@draw_sprite:
+	ld (.restore_sp + 1), sp
+	ld sp, hl
+
+	ld l, e
+	ld a, d
+	rra
+	rra
+	rra
+	and 3
+	or 0b1011000
+	ld h, a
+	ld (.set_attr_addr + 1), hl
+
+	ld a, (hl)
+	or a
+	jr z, 1F
+	ld a, 0xff
+1
+	ld (.set_row_0_mask+2), a
+
+	inc l
+	ld a, (hl)
+	or a
+	jr z, 2F
+	ld a, 0xff
+2
+	ld (.set_row_0_mask+1), a
+
+	ld bc, 0x20
+	add hl, bc
+	ld a, (hl)
+	or a
+	jr z, 3F
+	ld a, 0xff
+3
+	ld (.set_row_1_mask+1), a
+
+	dec l
+	ld a, (hl)
+	or a
+	jr z, 4F
+	ld a, 0xff
+4
+	ld (.set_row_1_mask+2), a
+
+	;; todo - can use without swapping?
+	ex de, hl
+
+.set_row_0_mask:
+	ld bc, 0
+	rept 4
+		copy_double_row
+	endr
+
+	ld a, l
+	sub -32
+	ld l, a
+	sbc a
+	and 0xf8
+	add h
+	ld h, a
+
+.set_row_1_mask:
+	ld bc, 0
+	rept 4
+		copy_double_row
+	endr
+
+.set_attr_addr:
+	ld hl, 0
+	ld a, 0x47
+	ld (hl), a
+	inc l
+	ld (hl), a
+	ld bc, 0x20
+	add hl, bc
+	ld (hl), a
+	dec l
+	ld (hl), a
+
+.restore_sp:
+	ld sp, 0
+	ret
+
+	endmodule
