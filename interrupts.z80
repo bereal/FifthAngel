@@ -35,12 +35,32 @@ routine:
     push de
     push hl
 
+    ld a, (dirty_screen)
+    or a
+    jr z, .skip_map_redraw
+
     ld a, 1
     out (254), a
 
-    ld a, (dirty_screen)
-    or a
-    jr z, .skip_redraw
+    call recover_buffer
+
+    ld hl, objects
+
+.objects_loop:
+    push hl
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    xor a
+    or h
+    jr z, 1F
+	call draw_object
+    pop hl
+    .2 inc hl
+    jr .objects_loop
+
+1   pop hl
 
     xor a
     ld bc, 0x3ff
@@ -50,9 +70,13 @@ routine:
     jr nz, 1B
 
     call copy_buffer
+    xor a
+    ld (dirty_screen), a
 
-.skip_redraw:
-    ld a, 2
+    ; todo: reset full redraw
+
+.skip_map_redraw:
+    ld a, 0
     out (254), a
 
     pop hl

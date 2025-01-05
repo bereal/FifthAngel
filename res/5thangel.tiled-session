@@ -3,12 +3,23 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "",
+    "activeFile": "test_level.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "test_level.tmx": {
+            "scale": 2,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 235,
+                "y": 222.75
+            }
+        },
         "tiles.tsx": {
-            "dynamicWrapping": true
+            "dynamicWrapping": true,
+            "scaleInDock": 3,
+            "scaleInEditor": 5.5
         }
     },
     "last.imagePath": "/home/bereal/sandbox/panda48/graphics/tiles",
@@ -18,9 +29,13 @@
     "map.tileWidth": 16,
     "map.width": 32,
     "openFiles": [
+        "tiles.tsx",
+        "test_level.tmx"
     ],
     "project": "5thangel.tiled-project",
     "recentFiles": [
+        "tiles.tsx",
+        "test_level.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.type": 1

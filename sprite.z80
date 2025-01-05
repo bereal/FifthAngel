@@ -1,6 +1,6 @@
 	module sprite
 
-	macro copy_double_row
+	macro copy_double_row_upper_half
 		pop de
 		ld a, (hl)
 		and b
@@ -35,6 +35,53 @@
 		inc h
 	endm
 
+	macro copy_double_row_lower_half
+		pop de
+		ld (hl), d
+
+		pop de
+		inc l
+		ld (hl), d
+
+		pop de
+		inc h
+		ld (hl), d
+
+		pop de
+		dec l
+		ld (hl), d
+
+		inc h
+	endm
+
+	macro copy_double_row_lower_half_left
+		pop de
+		ld (hl), d
+
+		pop de
+		pop de
+		pop de
+		inc h
+
+		ld (hl), d
+		inc h
+	endm
+
+	macro copy_double_row_lower_half_right
+		pop de
+		pop de
+		inc l
+		ld (hl), d
+
+		pop de
+		inc h
+		ld (hl), d
+
+		pop de
+		dec l
+		inc h
+	endm
+
 ;; hl - sprite address
 ;; de - screen address
 @draw_sprite:
@@ -49,49 +96,48 @@
 	and 3
 	or 0b1011000
 	ld h, a
-	ld (.set_attr_addr + 1), hl
+	ld (.set_attrs + 1), hl
+	ld (.restore_attr_addr + 1), hl
 
 	ld a, (hl)
 	or a
 	jr z, 1F
-	ld a, 0xff
+	ld b, 0xff
 1
-	ld (.set_row_0_mask+2), a
 
 	inc l
 	ld a, (hl)
 	or a
 	jr z, 2F
-	ld a, 0xff
+	ld c, 0xff
 2
-	ld (.set_row_0_mask+1), a
+	ex de, hl
 
+	rept 4
+		copy_double_row_upper_half
+	endr
+
+	ex de, hl
+
+.restore_attr_addr:
+	ld hl, 0
 	ld bc, 0x20
 	add hl, bc
 	ld a, (hl)
 	or a
-	jr z, 3F
-	ld a, 0xff
+	jr nz, 3F
+	set 1, b
 3
-	ld (.set_row_1_mask+1), a
 
-	dec l
+	inc l
 	ld a, (hl)
 	or a
-	jr z, 4F
-	ld a, 0xff
+	jr nz, 4F
+	set 0, b
 4
-	ld (.set_row_1_mask+2), a
-
-	;; todo - can use without swapping?
 	ex de, hl
 
-.set_row_0_mask:
-	ld bc, 0
-	rept 4
-		copy_double_row
-	endr
-
+	; down hl over a cell row
 	ld a, l
 	sub -32
 	ld l, a
@@ -100,15 +146,33 @@
 	add h
 	ld h, a
 
-.set_row_1_mask:
-	ld bc, 0
+	ld a, b
+	or a
+	jp z, .set_attrs
+	cp 0b11
+	jp nz, 1F
 	rept 4
-		copy_double_row
+		copy_double_row_lower_half
+	endr
+	jp .set_attrs
+
+1
+	ld a, b
+	cp 1
+	jp nz, 2F
+	rept 4
+		copy_double_row_lower_half_right
+	endr
+	jp .set_attrs
+
+2
+	rept 4
+		copy_double_row_lower_half_left
 	endr
 
-.set_attr_addr:
+.set_attrs:
 	ld hl, 0
-	ld a, 0x47
+	ld a, 0x7
 	ld (hl), a
 	inc l
 	ld (hl), a

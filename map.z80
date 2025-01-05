@@ -1,4 +1,4 @@
-	module map
+m	module map
 
 	;; sizes in tiles
 	define MapSize 32
@@ -15,6 +15,25 @@
 	define BufferSize BufferRowSize * Buffer_TH * TileSize
 	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
 
+	define RecoveryQueue BufferAddr + BufferSize
+
+	align 2
+buffer_lines:
+	rept Buffer_TH * TileSize, line
+		dw BufferAddr + line * BufferRowSize
+	endr
+
+screen_lines:
+	rept 12, line
+		dw 0x4000 + line * 32
+	endr
+	rept 12, line
+		dw 0x4800 + line * 32
+	endr
+	rept 8, line
+		dw 0x5000 + line * 32
+	endr
+
 @dirty_screen:
 	db 0
 
@@ -22,8 +41,27 @@ visible_offset:
 .column db 0
 .row db 0
 
+	align 4
+visible_buffer_bounds:
+.min.x db 0
+.max.x db 0
+.min.y db 0
+.max.y db 0
+
+visible_map_coord:
+.x db 0
+.y db 0
+
+buffered_map_coord:
+.x db 0
+.y db 0
+
+recovery_queue_tail:
+	dw RecoveryQueue
+
 map_coord:
-	db 0, 0
+.x db 0
+.y db 0
 
 buffered_map_addr:
 	dw test_level
@@ -58,10 +96,128 @@ test_level:
 		.TileRowSize ldi
 	endm
 
+; hl - object address
+@draw_object:
+	ld b, (hl) ; x
+	inc l
+	ld c, (hl) ; y
+	inc l
 
-prepare_tile:
-	prepare_tile
+	ld a, (visible_buffer_bounds.min.y)
+	sub c
+	ld c, a
+	ld a, (visible_offset.row)
+	sub c
+	ld c, a
+
+	jp m, .end
+
+	ld c, a
+	ld a, b
+
+	ld b, 0
+	ld hl, buffer_lines
+	add hl, bc
+	add hl, bc
+
+	ld b, (hl)
+	inc l
+	ld h, (hl)
+	ld l, b
+
+	ld c, a
+
+	ld a, (visible_buffer_bounds.min.x)
+	ld b, a
+	ld a, (visible_offset.column)
+	sub b
+	add c
+
+	jp m, .end
+
+	; hl += 3 * bc
+	ld b, 0
+	ld c, a
+	add hl, bc
+	sla c
+	add hl, bc
+
+	call save_half_tile
+
+	ld (hl), 0xc5
+	.3 inc hl
+	ld (hl), 0xc5
+
+	ld bc, BufferRowSize
+	add hl, bc
+	ld (hl), 0xc5
+	.3 dec hl
+	ld (hl), 0xc5
+
+	; ex de, hl
+	; ; de = the top-left buffer addr
+	; ; (hl) = sprite addr
+	; ; hl + 2 = masked destination
+	; inc de
+	; push de
+
+	; ld a,
+
+	; ; hl <- (hl)
+	; ld a, (hl)
+	; inc hl
+	; ld h, (hl)
+	; ld l, a
+
+	; push hl
+	; ld b, h
+	; ld c, l
+	; ld hl, 0x10
+
+
+; mark the buffer
+
+.end
 	ret
+
+	; ret m
+
+	; ld b, a ; a = x * 3
+	; add a
+	; add b
+
+	; ex af, af'
+
+	; ld a, (visible_bounds.min.y)
+	; ld c, (hl) ; y
+	; sub c
+	; neg
+
+	; ret m
+
+	; inc l
+	; rla
+	; ld c, a
+
+	; ; find buffer row start from the table
+	; ld b, 0
+	; ex de, hl
+	; ld hl, buffer_lines
+	; add hl, bc
+
+	; ld b, (hl)
+	; inc l
+	; ld h, (hl)
+	; ld l, b
+
+	; ex af, af'
+	; ; hl += 3 * x
+	; ld b, 0
+	; ld c, a
+	; add hl, bc
+
+	; ld (hl), 0b11100101
+	; ret
 
 prepare_map_row:
 	ld b, Buffer_TW
@@ -129,7 +285,6 @@ scroll_buffer_right:
 	inc hl
 	ld (buffered_map_addr), hl
 
-
 	; draw missing column on the right
 	ld bc, Buffer_TW - 1
 	add hl, bc
@@ -163,6 +318,7 @@ scroll_buffer_left:
 
 	ld de, BufferAddr
 	call prepare_map_column
+
 	ei
 	ret
 
@@ -207,7 +363,7 @@ scroll_buffer_up:
 	di
 	ld hl, (buffered_map_addr)
 	ld de, BufferAddr
-	ld b, 32
+	ld b, Buffer_TH
 
 .loop
 	push bc
@@ -225,6 +381,16 @@ scroll_buffer_up:
 	ei
 	ret
 
+reset_full_redraw:
+	ld hl, 0x79cb ; CB 79 = bit 7, c
+	ld (copy_line.check_dirty), hl
+	ret
+
+set_full_redraw:
+	ld hl, 0
+	ld (copy_line.check_dirty), hl
+	ret
+
 
 ;; hl - buffer address
 ;; de - attr address
@@ -237,9 +403,16 @@ copy_line:
 	ld a, (hl)
 	inc hl
 
+	ld c, a
+	and 0x7f
 	ld (de), a
 	inc e
 	or a
+	jr z, .skipdraw
+
+.check_dirty
+	nop
+	nop
 	jr z, .skipdraw
 
 	ld a, (hl)
@@ -293,6 +466,10 @@ copy_line:
 	endm
 
 @copy_buffer:
+.set_border
+	ld a, 0
+	out (254), a
+
 	exx
 	ld bc, 0xf901
 	exx
@@ -379,16 +556,112 @@ copy_line:
 	do_copy_line 0x50a0, 0x5a
 
 	ld a, 0
-	ld (dirty_screen), a
+	out (254), a
+
+	call reset_full_redraw
 	ret
 
-@scroll_map_right:
-	ld hl, (map_coord)
+
+; hl - buffer addr (preserved)
+save_half_tile:
+	push hl
+	push de
+	push bc
+	ex de, hl
+
+	ld hl, (recovery_queue_tail)
+	ld (hl), e
 	inc hl
-	ld a, MapSize * 2 - VisibleBuffer_TW * 2 + 1
-	cp l
+	ld (hl), d
+	inc hl
+
+	ex de, hl
+
+	.BufferedCellSize ldi
+
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	.BufferedCellSize ldi
+
+	ld bc, BufferRowSize - 2 * BufferedCellSize
+	add hl, bc
+
+	ex de, hl
+	ld  (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	.BufferedCellSize ldi
+
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+
+	.BufferedCellSize ldi
+
+	ex de, hl
+	ld (recovery_queue_tail), hl
+	pop bc
+	pop de
+	pop hl
+	ret
+
+@recover_buffer:
+	ld hl, RecoveryQueue
+	ld (recovery_queue_tail), hl
+.loop
+	ld e, (hl)
+	inc hl
+
+	ld a, (hl)
+	or a
+	jr z, .cleanup
+	ld d, a
+
+	inc hl
+	.BufferedCellSize ldi
+	jp .loop
+
+.cleanup
+	ld bc, 0x10000-(RecoveryQueue)
+	add hl, bc
+	ld a, l
+	or h
 	ret z
-	ld (map_coord), hl
+	ld b, h
+	ld c, l
+	ld hl, RecoveryQueue
+	ld de, RecoveryQueue + 1
+	ld (hl), 0
+	ldir
+	ret
+
+scroll_map_right:
+	call recover_buffer
+
+	ld a, (map_coord.x)
+	inc a
+	cp MapSize * 2 - VisibleBuffer_TW * 2 + 1
+	ret z
+	ld (map_coord.x), a
+
+	ld hl, visible_buffer_bounds.min.x
+	inc (hl)
+	inc l
+	inc (hl)
+
+	ld hl, visible_map_coord.x
+	inc (hl)
 
 	ld a, (visible_offset.column)
 	inc a
@@ -400,13 +673,25 @@ copy_line:
 .noredraw
 	ld (visible_offset.column), a
 	ld (dirty_screen), a
+
+	call set_full_redraw
 	ret
 
-@scroll_map_left:
-	ld hl, (map_coord)
-	dec l
+scroll_map_left:
+	call recover_buffer
+
+	ld a, (map_coord.x)
+	dec a
 	ret m
-	ld (map_coord), hl
+	ld (map_coord.x), a
+
+	ld hl, visible_buffer_bounds.min.x
+	dec (hl)
+	inc l
+	dec (hl)
+
+	ld hl, visible_map_coord.x
+	dec (hl)
 
 	ld a, (visible_offset.column)
 	sub 1
@@ -418,15 +703,23 @@ copy_line:
 	ld (visible_offset.column), a
 	inc a
 	ld (dirty_screen), a
+
+	call set_full_redraw
 	ret
 
-@scroll_map_down:
-	ld hl, (map_coord)
-	inc h
-	ld a, MapSize * 2 - VisibleBuffer_TH * 2 + 1
-	cp h
+scroll_map_down:
+	call recover_buffer
+
+	ld a, (map_coord.y)
+	inc a
+	cp MapSize * 2 - VisibleBuffer_TH * 2 + 1
 	ret z
-	ld (map_coord), hl
+	ld (map_coord.y), a
+
+	ld hl, visible_buffer_bounds.min.y
+	inc (hl)
+	inc l
+	inc (hl)
 
 	ld a, (visible_offset + 1)
 	inc a
@@ -436,15 +729,25 @@ copy_line:
 	ld a, 1
 
 .noredraw
+	ld (dirty_screen), a
 	ld (visible_offset.row), a
 	ld (dirty_screen), a
+
+	call set_full_redraw
 	ret
 
 @scroll_map_up:
-	ld hl, (map_coord)
-	dec h
+	call recover_buffer
+
+	ld a, (map_coord.y)
+	dec a
 	ret m
-	ld (map_coord), hl
+	ld (map_coord.y), a
+
+	ld hl, visible_buffer_bounds.min.y
+	dec (hl)
+	inc l
+	dec (hl)
 
 	ld a, (visible_offset + 1)
 	sub 1
@@ -455,6 +758,63 @@ copy_line:
 .noredraw
 	ld (visible_offset.row), a
 	inc a
+	ld (dirty_screen), a
+
+	call set_full_redraw
+	ret
+
+@move_hero_up:
+	ld a, (hero.y)
+	dec a
+	ret m
+
+	ld (hero.y), a
+	cp 64 - 12
+	call c, scroll_map_up
+
+	ld a, 1
+	ld (dirty_screen), a
+	ret
+
+@move_hero_down:
+	ld a, (hero.y)
+	inc a
+	cp MapSize * 2 - 3
+	ret z
+
+	ld (hero.y), a
+	cp 12
+	call nc, scroll_map_down
+
+	ld a, 1
+	ld (dirty_screen), a
+	ret
+
+@move_hero_right:
+	ld a, (hero.x)
+	inc a
+	cp MapSize * 2 - 3
+	ret z
+
+	ld (hero.x), a
+	cp 12
+	call nc, scroll_map_right
+
+	ld a, 1
+	ld (dirty_screen), a
+	ret
+
+@move_hero_left:
+	ld a, (hero.x)
+	or a
+	ret z
+
+	dec a
+	ld (hero.x), a
+	cp 64 - 12
+	call c, scroll_map_left
+
+	ld a, 1
 	ld (dirty_screen), a
 	ret
 

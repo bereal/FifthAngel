@@ -11,6 +11,8 @@ start:
 	; out (254), a
 
 	call redraw_map
+	ld hl, hero
+	call draw_object
 
 read:
 	halt
@@ -21,38 +23,46 @@ read:
 	and 0b01111111
 	cp 1
 	jr nz, .notup
-	call scroll_map_up
-	; call redraw_map
+	call move_hero_up
 	jr .next
 .notup
 	cp 2
 	jr nz, .notdown
-	call scroll_map_down
-	; call redraw_map
+	call move_hero_down
 	jr .next
 .notdown
 	cp 3
 	jr nz, .notleft
-	call scroll_map_left
+	call move_hero_left
 	jr .next
 .notleft
 	cp 4
 	jr nz, .next
-	call scroll_map_right
-	; call redraw_map
-	; call move_right
-	; call redraw_map
+	call move_hero_right
 
 .next
 	.2 halt
 	jr read
 
+hero:
+.x db 1
+.y db 1
+.sprite dw sprite_0
+.mask_buffer
+	.16 db 0
+
+objects:
+	dw hero
+	dw 0
+
 hello: db 'Press any key!', 0
 	include "keyboard.z80"
-
 	include "map.z80"
-	include "res/tiles.z80"
+	include "sprite.z80"
 	include "interrupts.z80"
+
+	include "res/tiles.z80"
+	include "res/sprites.z80"
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
