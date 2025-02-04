@@ -39,8 +39,8 @@ routine:
     or a
     jr z, .skip_map_redraw
 
-    ld a, 1
-    out (254), a
+    ; ld a, 1
+    ; out (254), a
 
     call recover_buffer
 

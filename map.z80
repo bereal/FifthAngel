@@ -1,4 +1,4 @@
-m	module map
+com	module map
 
 	;; sizes in tiles
 	define MapSize 32
@@ -96,13 +96,11 @@ test_level:
 		.TileRowSize ldi
 	endm
 
-; hl - object address
-@draw_object:
-	ld b, (hl) ; x
-	inc l
-	ld c, (hl) ; y
-	inc l
 
+; in: bc - coords as b=x, c=y
+; out: hl - buffer address
+;      flag M if out of screen
+coord_to_addr:
 	ld a, (visible_buffer_bounds.min.y)
 	sub c
 	ld c, a
@@ -142,82 +140,60 @@ test_level:
 	sla c
 	add hl, bc
 
-	call save_half_tile
-
-	ld (hl), 0xc5
-	.3 inc hl
-	ld (hl), 0xc5
-
-	ld bc, BufferRowSize
-	add hl, bc
-	ld (hl), 0xc5
-	.3 dec hl
-	ld (hl), 0xc5
-
-	; ex de, hl
-	; ; de = the top-left buffer addr
-	; ; (hl) = sprite addr
-	; ; hl + 2 = masked destination
-	; inc de
-	; push de
-
-	; ld a,
-
-	; ; hl <- (hl)
-	; ld a, (hl)
-	; inc hl
-	; ld h, (hl)
-	; ld l, a
-
-	; push hl
-	; ld b, h
-	; ld c, l
-	; ld hl, 0x10
-
-
-; mark the buffer
-
 .end
 	ret
 
-	; ret m
 
-	; ld b, a ; a = x * 3
-	; add a
-	; add b
+; hl - object address
+@draw_object:
+	ld b, (hl) ; x
+	inc l
+	ld c, (hl) ; y
+	inc l
 
-	; ex af, af'
+	call coord_to_addr
+	jp m, .end
 
-	; ld a, (visible_bounds.min.y)
-	; ld c, (hl) ; y
-	; sub c
-	; neg
+	call save_tile
 
-	; ret m
+	ld a, (hl)
+	and 0x7f
+	or a
+	jr nz, 1F
+	ld (hl), 0xff
+	jp 2F
+1
+	ld (hl), 0b11101101
+2
+	.3 inc hl
 
-	; inc l
-	; rla
-	; ld c, a
+	ld a, (hl)
+	and 0x7f
+	or a
+	jr nz, 1F
+	ld (hl), 0xff
+	jp 2F
+1
+ 	ld (hl), 0b11101101
 
-	; ; find buffer row start from the table
-	; ld b, 0
-	; ex de, hl
-	; ld hl, buffer_lines
-	; add hl, bc
+2
 
-	; ld b, (hl)
-	; inc l
-	; ld h, (hl)
-	; ld l, b
+	ld bc, BufferRowSize - BufferedCellSize
+	add hl, bc
+	ld a, (hl)
+	or a
+	jp nz, 1F
+	ld (hl), 0b11101101
+1
+	.3 inc hl
+	ld a, (hl)
+	or a
+	jp nz, 2F
+	ld (hl), 0b11101101
+2
 
-	; ex af, af'
-	; ; hl += 3 * x
-	; ld b, 0
-	; ld c, a
-	; add hl, bc
-
-	; ld (hl), 0b11100101
-	; ret
+.end
+	ret
 
 prepare_map_row:
 	ld b, Buffer_TW
@@ -403,10 +379,20 @@ copy_line:
 	ld a, (hl)
 	inc hl
 
-	ld c, a
 	and 0x7f
+	cp 0x7f
+	jp nz, 1F
+	ld a, 0b01101101
 	ld (de), a
-	inc e
+	inc de
+	jp .skipdraw
+
+; 	ld a, 0b11101101
+; 	ld (de), a
+; 	jr .skipdraw
+1
+	ld (de), a
+	inc de
 	or a
 	jr z, .skipdraw
 
@@ -415,6 +401,7 @@ copy_line:
 	nop
 	jr z, .skipdraw
 
+.draw_cell
 	ld a, (hl)
 	ld (.setsp+1), a
 	inc hl
@@ -563,7 +550,7 @@ copy_line:
 
 
 ; hl - buffer addr (preserved)
-save_half_tile:
+save_tile:
 	push hl
 	push de
 	push bc
@@ -764,11 +751,28 @@ scroll_map_down:
 	ret
 
 @move_hero_up:
-	ld a, (hero.y)
-	dec a
+	ld hl, (hero.x)
+	dec h
 	ret m
 
-	ld (hero.y), a
+	push hl
+	ld c, h
+	ld b, l
+	inc c
+	call coord_to_addr
+	ld a, (hl)
+	cp 0xff
+	jr nz, 1F
+	ld bc, 3
+	add hl, bc
+	ld a, (hl)
+	cp 0xff
+1
+	pop hl
+	ret nz
+
+	ld (hero.x), hl
+	ld a, h
 	cp 64 - 12
 	call c, scroll_map_up
 
@@ -777,12 +781,35 @@ scroll_map_down:
 	ret
 
 @move_hero_down:
-	ld a, (hero.y)
-	inc a
+	ld hl, (hero.x)
+	inc h
+	ld a, h
 	cp MapSize * 2 - 3
 	ret z
 
-	ld (hero.y), a
+	and 1
+	jr nz, .aftercheck
+
+	push hl
+	ld c, h
+	ld b, l
+	inc c
+
+	call coord_to_addr
+
+	ld a, (hl)
+	ld bc, 3
+	add hl, bc
+	or (hl)
+	and 0x7f
+
+	pop hl
+	ret nz
+
+.aftercheck
+	ld (hero.x), hl
+
+	ld a, h
 	cp 12
 	call nc, scroll_map_down
 
@@ -791,13 +818,46 @@ scroll_map_down:
 	ret
 
 @move_hero_right:
-	ld a, (hero.x)
-	inc a
+	ld hl, (hero.x)
+	inc l
+	ld a, l
 	cp MapSize * 2 - 3
 	ret z
 
+	push hl
+	ld c, h
+	ld b, l
+	inc b
+
+	push bc
+	call coord_to_addr
+	pop bc
+
+	ld a, c
+	and 1
+	jr z, 1F
+
+	ld a, (hl)
+	and 0x7f
+	jr z, .checked
+
+1
+	ld bc, BufferRowSize
+	add hl, bc
+	ld a, (hl)
+	and 0x7f
+
+.checked
+	pop hl
+	ret nz
+
+	ld b, l
+	ld c, h
+
+	ld a, l
 	ld (hero.x), a
 	cp 12
+
 	call nc, scroll_map_right
 
 	ld a, 1
@@ -805,11 +865,43 @@ scroll_map_down:
 	ret
 
 @move_hero_left:
-	ld a, (hero.x)
+	ld hl, (hero.x)
+	ld a, l
 	or a
 	ret z
+	dec l
+	ld a, l
 
-	dec a
+	push hl
+	ld c, h
+	ld b, l
+
+	push bc
+	call coord_to_addr
+	pop bc
+
+	ld a, c
+	and 1
+	jr z, 1F
+
+	ld a, (hl)
+	and 0x7f
+	jr z, .checked
+
+1
+	ld bc, BufferRowSize
+	add hl, bc
+	ld a, (hl)
+	and 0x7f
+
+.checked
+	pop hl
+	ret nz
+
+	ld b, l
+	ld c, h
+
+	ld a, l
 	ld (hero.x), a
 	cp 64 - 12
 	call c, scroll_map_left
@@ -818,4 +910,38 @@ scroll_map_down:
 	ld (dirty_screen), a
 	ret
 
+; set Z iff the location can be occupied by a hero
+can_occupy_tile:
+	push hl
+	inc h
+	; ld a, 1
+	; and l
+	; jr z, .ret
+
+	ld a, l
+
+	ld b, 0
+	ld c, h
+
+	ld hl, buffer_lines
+	add hl, bc
+	add hl, bc
+	ld c, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, c
+	ld c, a
+	add hl, bc
+	sla c
+	add hl, bc
+
+	ld a, (hl)
+	ld c, 3
+	add hl, bc
+	or (hl)
+	and 0x7f
+
+.ret
+	pop hl
+	ret
 	endmodule

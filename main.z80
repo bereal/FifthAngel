@@ -47,9 +47,6 @@ read:
 hero:
 .x db 1
 .y db 1
-.sprite dw sprite_0
-.mask_buffer
-	.16 db 0
 
 objects:
 	dw hero
