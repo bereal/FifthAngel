@@ -1,0 +1,42 @@
+	module memory
+
+; in:
+; hl - arena base addr
+; bc - allocated size
+
+; out:
+; hl - allocated address
+alloc_arena:
+	push de
+	ld d, h
+	ld e, l
+
+	ld a, (hl)
+	inc l
+	ld h, (hl)
+	ld l, a
+	push hl
+
+	add hl, bc
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+
+	pop hl
+	pop de
+
+	ret
+
+init_arena:
+	push hl
+	ld a, l
+	add 2
+	ld (hl), a
+	inc l
+	ld (hl), h
+	pop hl
+
+	ret
+
+	endmodule

@@ -2,17 +2,17 @@
 
 	ORG #8000
 start:
+
 	ld sp, 0
 	call set_im2
-	; call init_map
-	; call redraw_map
+	call redraw_map
 	; halt
 	; ld a, 1
 	; out (254), a
+	ld a, 1
+	ld (dirty_screen), a
 
-	call redraw_map
-	ld hl, hero
-	call draw_object
+	halt
 
 read:
 	halt
@@ -47,6 +47,7 @@ read:
 hero:
 .x db 1
 .y db 1
+.sprite dw sprite_0
 
 objects:
 	dw hero
@@ -57,6 +58,7 @@ hello: db 'Press any key!', 0
 	include "map.z80"
 	include "sprite.z80"
 	include "interrupts.z80"
+	include "memory.z80"
 
 	include "res/tiles.z80"
 	include "res/sprites.z80"

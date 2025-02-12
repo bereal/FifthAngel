@@ -1,4 +1,4 @@
-com	module map
+	module map
 
 	;; sizes in tiles
 	define MapSize 32
@@ -16,6 +16,7 @@ com	module map
 	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
 
 	define RecoveryQueue BufferAddr + BufferSize
+	define SpriteArena RecoveryQueue + 48
 
 	align 2
 buffer_lines:
@@ -33,6 +34,11 @@ screen_lines:
 	rept 8, line
 		dw 0x5000 + line * 32
 	endr
+
+reset_arena:
+	ld hl, SpriteArena
+	call memory.init_arena
+	ret
 
 @dirty_screen:
 	db 0
@@ -144,53 +150,193 @@ coord_to_addr:
 	ret
 
 
+; in:
+;  hl - sprite cell mask+bitmap addr
+;  de - buffer bitmap addr
+;  (de) - background bitmap pointer
+
+; out:
+;  original buffer bitmap pointer is overwritten with the drawn addr
+;  de = de + 2
+;  hl - next cell to draw
+draw_cell_with_mask:
+	ld (.set_sp+1), hl
+
+	ld hl, SpriteArena
+	ld bc, 8
+	call memory.alloc_arena
+
+	ld b, h
+	ld c, l  ; bc = allocated destination
+
+	ex de, hl
+	ld e, (hl)
+	ld (hl), c
+	inc hl
+	ld d, (hl)
+	ld (hl), b
+	inc hl
+
+	push hl
+
+	ld (.ret+1), sp
+.set_sp
+	ld sp, 0
+
+	; at this point:
+	;  SP = sprite
+	;  DE - background
+	;  BC - dest
+	;  HL - will be used to store sprite data
+	;  for (i = 0; i < 8; i++) {
+	;    *dest++ = *bg++ & sprite[0] | sprite[1];
+	;    sprite += 2;
+	;  }
+	rept 8
+		pop hl
+		ld a, (de)
+		and l
+		or h
+		ld (bc), a
+		inc bc
+		inc de
+	endr
+
+	ld (.new_sp+1), sp
+
+.ret
+	ld sp, 0
+.new_sp
+	ld hl, 0
+	pop de
+	ret
+
+; API just like in draw_cell_with_mask
+draw_cell_ignore_mask:
+	push hl
+
+	ld hl, SpriteArena
+	ld bc, 8
+	call memory.alloc_arena
+
+	ex de, hl ; de - allocated destination
+
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+
+	ex (sp), hl
+
+	rept 8
+		inc hl
+		ldi
+	endr
+
+	pop de
+	ret
+
 ; hl - object address
-@draw_object:
+draw_object:
 	ld b, (hl) ; x
 	inc l
 	ld c, (hl) ; y
 	inc l
 
-	call coord_to_addr
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+
+	ex de, hl ; de - sprite bitmap
+
+	call coord_to_addr ; hl - buffer addr
 	jp m, .end
 
 	call save_tile
 
 	ld a, (hl)
 	and 0x7f
-	or a
-	jr nz, 1F
+	jr nz, .cell_1_masked
+
 	ld (hl), 0xff
-	jp 2F
-1
-	ld (hl), 0b11101101
-2
-	.3 inc hl
+	inc hl
+	ex de, hl
+	call draw_cell_ignore_mask
+	jp .cell_2
+
+.cell_1_masked
+	; ld (hl), 0b11000111
+	or 0x80
+	ld (hl), a
+	inc hl
+	ex de, hl
+
+	call draw_cell_with_mask
+
+.cell_2
+	ex de, hl
 
 	ld a, (hl)
 	and 0x7f
-	or a
-	jr nz, 1F
+	jr nz, .cell_2_masked
+
 	ld (hl), 0xff
-	jp 2F
-1
- 	ld (hl), 0b11101101
+	inc hl
+	ex de, hl
+	call draw_cell_ignore_mask
+	jp .cell_3
 
-2
+.cell_2_masked
+ 	; ld (hl), 0b11101101
+	or 0x80
+	ld (hl), a
+	inc hl
+	ex de, hl
+	call draw_cell_with_mask
 
-	ld bc, BufferRowSize - BufferedCellSize
+.cell_3
+	ex de, hl ; hl - buffer, de - cell bitmap
+
+	ld bc, BufferRowSize - 2 * BufferedCellSize
 	add hl, bc
 	ld a, (hl)
-	or a
-	jp nz, 1F
-	ld (hl), 0b11101101
-1
-	.3 inc hl
+	and 0x7f
+	jp nz, .skip_cell_3
+
+	ld (hl), 0b10000111
+	inc hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	jp .cell_4
+
+.skip_cell_3
+	ld bc, 3
+	add hl, bc
+
+.cell_4
+	ex de, hl
+	ld bc, 8
+	add hl, bc
+	ex de, hl
+
 	ld a, (hl)
-	or a
-	jp nz, 2F
-	ld (hl), 0b11101101
-2
+	and 0x7f
+	jr nz, .end
+
+	ld (hl),  0b10000111
+	inc hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+
+; 	ld a, (hl)
+; 	or a
+; 	jp nz, 2F
+; 	ld (hl), 0b11101101
+; 2
 
 .end
 	ret
@@ -379,23 +525,24 @@ copy_line:
 	ld a, (hl)
 	inc hl
 
+	ld c, a
 	and 0x7f
 	cp 0x7f
 	jp nz, 1F
-	ld a, 0b01101101
+
+	; drawing a character cell over an empty cell
+	ld a, 7
 	ld (de), a
 	inc de
-	jp .skipdraw
+	jp .draw_cell
 
-; 	ld a, 0b11101101
-; 	ld (de), a
-; 	jr .skipdraw
 1
 	ld (de), a
 	inc de
 	or a
 	jr z, .skipdraw
 
+	ld a, c
 .check_dirty
 	nop
 	nop
@@ -439,7 +586,6 @@ copy_line:
   	ret
 
 	macro do_copy_line bitmap_row, attr_high_byte
-		; ld hl, (buf_addr)
 		ld de, attr_high_byte * 0x100 + low(bitmap_row)
 		exx
 		ld hl, bitmap_row
@@ -452,11 +598,8 @@ copy_line:
 		add hl, bc
 	endm
 
-@copy_buffer:
+copy_buffer:
 .set_border
-	ld a, 0
-	out (254), a
-
 	exx
 	ld bc, 0xf901
 	exx
@@ -603,7 +746,7 @@ save_tile:
 	pop hl
 	ret
 
-@recover_buffer:
+recover_buffer:
 	ld hl, RecoveryQueue
 	ld (recovery_queue_tail), hl
 .loop
@@ -616,7 +759,15 @@ save_tile:
 	ld d, a
 
 	inc hl
-	.BufferedCellSize ldi
+
+	ld a, (hl)
+	or 0b10000000
+	ld (de), a
+	inc hl
+	inc de
+
+	.2 ldi
+
 	jp .loop
 
 .cleanup
@@ -631,6 +782,7 @@ save_tile:
 	ld de, RecoveryQueue + 1
 	ld (hl), 0
 	ldir
+
 	ret
 
 scroll_map_right:
@@ -765,8 +917,8 @@ scroll_map_down:
 	jr nz, 1F
 	ld bc, 3
 	add hl, bc
-	ld a, (hl)
-	cp 0xff
+	; ld a, (hl)
+	; cp 0xff
 1
 	pop hl
 	ret nz

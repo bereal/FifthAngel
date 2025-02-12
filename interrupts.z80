@@ -39,13 +39,10 @@ routine:
     or a
     jr z, .skip_map_redraw
 
-    ; ld a, 1
-    ; out (254), a
-
-    call recover_buffer
+    call map.recover_buffer
+    call map.reset_arena
 
     ld hl, objects
-
 .objects_loop:
     push hl
     ld a, (hl)
@@ -55,7 +52,7 @@ routine:
     xor a
     or h
     jr z, 1F
-	call draw_object
+	call map.draw_object
     pop hl
     .2 inc hl
     jr .objects_loop
@@ -69,11 +66,14 @@ routine:
     cp b
     jr nz, 1B
 
-    call copy_buffer
+    ld a, 1
+    out (254), a
+
+    call map.copy_buffer
     xor a
     ld (dirty_screen), a
 
-    ; todo: reset full redraw
+    call map.reset_full_redraw
 
 .skip_map_redraw:
     ld a, 0
