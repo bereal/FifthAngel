@@ -917,8 +917,8 @@ scroll_map_down:
 	jr nz, 1F
 	ld bc, 3
 	add hl, bc
-	; ld a, (hl)
-	; cp 0xff
+	ld a, (hl)
+	cp 0xff
 1
 	pop hl
 	ret nz

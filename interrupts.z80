@@ -66,8 +66,8 @@ routine:
     cp b
     jr nz, 1B
 
-    ld a, 1
-    out (254), a
+    ; ld a, 1
+    ; out (254), a
 
     call map.copy_buffer
     xor a
@@ -76,8 +76,8 @@ routine:
     call map.reset_full_redraw
 
 .skip_map_redraw:
-    ld a, 0
-    out (254), a
+    ; ld a, 0
+    ; out (254), a
 
     pop hl
     pop de
