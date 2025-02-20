@@ -1,4 +1,4 @@
-	module map
+mac	module map
 
 	;; sizes in tiles
 	define MapSize 32
@@ -245,8 +245,15 @@ draw_object:
 
 	ld a, (hl)
 	inc hl
+
+	ex af, af'
+	ld a, (hl)
+	inc hl
 	ld h, (hl)
 	ld l, a
+	ex af, af'
+
+	call sprite.ensure_orientation
 
 	ex de, hl ; de - sprite bitmap
 
@@ -254,6 +261,34 @@ draw_object:
 	jp m, .end
 
 	call save_tile
+
+	; set up mirroring
+	ld a, (de)
+	inc de
+	and 1
+	jr z, .nomirror
+
+	ld bc, 3
+	add hl, bc
+
+	exx
+	ld hl, 0x10000 - 6
+	ld (.shift_buffer_cell_2+1), hl
+	ld (.shift_buffer_cell_4+1), hl
+	ld hl, BufferRowSize
+	ld (.shift_buffer_cell_3+1), hl
+	exx
+	jr .end_setup_mirror
+
+.nomirror
+	exx
+	ld hl, 0
+	ld (.shift_buffer_cell_2+1), hl
+	ld (.shift_buffer_cell_4+1), hl
+	ld hl, BufferRowSize - 2 * BufferedCellSize
+	ld (.shift_buffer_cell_3+1), hl
+	exx
+.end_setup_mirror
 
 	ld a, (hl)
 	and 0x7f
@@ -277,6 +312,10 @@ draw_object:
 .cell_2
 	ex de, hl
 
+.shift_buffer_cell_2
+	ld bc, 0
+	add hl, bc
+
 	ld a, (hl)
 	and 0x7f
 	jr nz, .cell_2_masked
@@ -298,8 +337,10 @@ draw_object:
 .cell_3
 	ex de, hl ; hl - buffer, de - cell bitmap
 
-	ld bc, BufferRowSize - 2 * BufferedCellSize
+.shift_buffer_cell_3
+	ld bc, 0
 	add hl, bc
+
 	ld a, (hl)
 	and 0x7f
 	jp nz, .skip_cell_3
@@ -322,6 +363,10 @@ draw_object:
 	add hl, bc
 	ex de, hl
 
+.shift_buffer_cell_4
+	ld bc, 0
+	add hl, bc
+
 	ld a, (hl)
 	and 0x7f
 	jr nz, .end
@@ -331,12 +376,6 @@ draw_object:
 	ld (hl), e
 	inc hl
 	ld (hl), d
-
-; 	ld a, (hl)
-; 	or a
-; 	jp nz, 2F
-; 	ld (hl), 0b11101101
-; 2
 
 .end
 	ret
@@ -970,6 +1009,14 @@ scroll_map_down:
 	ret
 
 @move_hero_right:
+	ld a, (hero.orientation)
+	or a
+	jr z, 1F
+	dec a
+	ld (hero.orientation), a
+	jr .exit
+
+1
 	ld hl, (hero.x)
 	inc l
 	ld a, l
@@ -1012,17 +1059,26 @@ scroll_map_down:
 
 	call nc, scroll_map_right
 
+.exit
 	ld a, 1
 	ld (dirty_screen), a
 	ret
 
 @move_hero_left:
+	ld a, (hero.orientation)
+	and 1
+	jr nz, 1F
+
+	ld a, 1
+	ld (hero.orientation), a
+	jr .exit
+
+1
 	ld hl, (hero.x)
 	ld a, l
 	or a
 	ret z
 	dec l
-	ld a, l
 
 	push hl
 	ld c, h
@@ -1058,6 +1114,7 @@ scroll_map_down:
 	cp 64 - 12
 	call c, scroll_map_left
 
+.exit
 	ld a, 1
 	ld (dirty_screen), a
 	ret

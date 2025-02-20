@@ -2,9 +2,9 @@
 
 	ORG #8000
 start:
-
 	ld sp, 0
 	call set_im2
+
 	call redraw_map
 	; halt
 	; ld a, 1
@@ -47,6 +47,7 @@ read:
 hero:
 .x db 1
 .y db 1
+.orientation db 0
 .sprite dw sprite_0
 
 objects:
