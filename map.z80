@@ -1,4 +1,4 @@
-mac	module map
+	module map
 
 	;; sizes in tiles
 	define MapSize 32
@@ -15,7 +15,8 @@ mac	module map
 	define BufferSize BufferRowSize * Buffer_TH * TileSize
 	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
 
-	define RecoveryQueue BufferAddr + BufferSize
+	define BufferLinesMask BufferAddr + BufferSize
+	define RecoveryQueue BufferLinesMask + Buffer_TH * 2
 	define SpriteArena RecoveryQueue + 48
 
 	align 2
@@ -104,7 +105,8 @@ test_level:
 
 
 ; in: bc - coords as b=x, c=y
-; out: hl - buffer address
+; out: hl - buffer address (if not out of screen)
+;	   bc - buffer row (if not out of screen)
 ;      flag M if out of screen
 coord_to_addr:
 	ld a, (visible_buffer_bounds.min.y)
@@ -112,14 +114,14 @@ coord_to_addr:
 	ld c, a
 	ld a, (visible_offset.row)
 	sub c
-	ld c, a
-
-	jp m, .end
+	ret m
 
 	ld c, a
 	ld a, b
 
 	ld b, 0
+	push bc
+
 	ld hl, buffer_lines
 	add hl, bc
 	add hl, bc
@@ -147,6 +149,7 @@ coord_to_addr:
 	add hl, bc
 
 .end
+	pop bc
 	ret
 
 
@@ -259,6 +262,17 @@ draw_object:
 
 	call coord_to_addr ; hl - buffer addr
 	jp m, .end
+
+	push hl
+	dec bc
+	ld hl, BufferLinesMask
+	add hl, bc
+	ld (hl), 1
+	rept 3
+		inc hl
+		ld (hl), 1
+	endr
+	pop hl
 
 	call save_tile
 
@@ -522,6 +536,7 @@ scroll_buffer_up:
 
 @redraw_map:
 	di
+	call set_full_redraw
 	ld hl, (buffered_map_addr)
 	ld de, BufferAddr
 	ld b, Buffer_TH
@@ -545,19 +560,33 @@ scroll_buffer_up:
 reset_full_redraw:
 	ld hl, 0x79cb ; CB 79 = bit 7, c
 	ld (copy_line.check_dirty), hl
+	ld hl, BufferLinesMask
+	ld de, BufferLinesMask + 1
+	ld (hl), 0
+	ld bc, Buffer_TH * 2 - 1
+	ldir
 	ret
 
 set_full_redraw:
 	ld hl, 0
 	ld (copy_line.check_dirty), hl
+	ld hl, BufferLinesMask
+	ld de, BufferLinesMask + 1
+	ld (hl), 1
+	ld bc, Buffer_TH * 2 - 1
+	ldir
 	ret
 
 
-;; hl - buffer address
-;; de - attr address
-;; hl' - bitmap address
-;; bc' - 0xf901
+;; hl - buffer address (advanced to the end of the line)
+;; de - attr address (advanced)
+;; hl' - bitmap address (advanced)
+;; bc' - 0xf901 (preserved)
+;; de' is preserved
 copy_line:
+	exx
+	push de
+	exx
 	ld (.ret + 1), sp
 	ld b, 22
 .loop
@@ -622,14 +651,29 @@ copy_line:
 	djnz .loop
 .ret
 	ld sp, 0
+	exx
+	pop de
+	exx
   	ret
 
 	macro do_copy_line bitmap_row, attr_high_byte
-		ld de, attr_high_byte * 0x100 + low(bitmap_row)
 		exx
+		ld hl, BufferLinesMask
+		add hl, de
+		ld a, (hl)
 		ld hl, bitmap_row
+		inc de
 		exx
+		or a
+		jr z, 1F
+
+		ld de, attr_high_byte * 0x100 + low(bitmap_row)
 		call copy_line
+		jr 2F
+1
+		ld bc, BufferRowSize - 6
+		add hl, bc
+2
 	endm
 
 	macro next_line
@@ -637,8 +681,12 @@ copy_line:
 		add hl, bc
 	endm
 
+	macro border color
+		ld a, color
+		out (254), a
+	endm
+
 copy_buffer:
-.set_border
 	exx
 	ld bc, 0xf901
 	exx
@@ -651,59 +699,84 @@ copy_buffer:
 	.3 add hl, de
 
 	xor a
+	ld c, a
 	or b
 	jr z, 2F
 	ld de, BufferRowSize
+	ld c, b
+
 1
 	add hl, de
 	djnz 1B
 2
+	push bc
+	exx
+	pop de
+	exx
+	; after this, DE' is the buffer line number
+	; (used to check dirty lines)
 
+	border 1
 	do_copy_line 0x4000, 0x58
 	next_line
 
+	border 2
 	do_copy_line 0x4020, 0x58
 	next_line
 
+	border 3
 	do_copy_line 0x4040, 0x58
 	next_line
 
+	border 4
 	do_copy_line 0x4060, 0x58
 	next_line
 
+	border 5
 	do_copy_line 0x4080, 0x58
 	next_line
 
+	border 6
 	do_copy_line 0x40a0, 0x58
 	next_line
 
+	border 7
 	do_copy_line 0x40c0, 0x58
 	next_line
 
+	border 0
 	do_copy_line 0x40e0, 0x58
 	next_line
 
+	border 1
 	do_copy_line 0x4800, 0x59
 	next_line
 
+	border 2
 	do_copy_line 0x4820, 0x59
 	next_line
 
+	border 3
 	do_copy_line 0x4840, 0x59
 	next_line
 
+	border 4
 	do_copy_line 0x4860, 0x59
 	next_line
 
+	border 5
 	do_copy_line 0x4880, 0x59
 	next_line
 
+	border 6
 	do_copy_line 0x48a0, 0x59
 	next_line
 
+	border 7
 	do_copy_line 0x48c0, 0x59
 	next_line
 
+	border 0
 	do_copy_line 0x48e0, 0x59
 	next_line
 
@@ -1119,38 +1192,19 @@ scroll_map_down:
 	ld (dirty_screen), a
 	ret
 
-; set Z iff the location can be occupied by a hero
-can_occupy_tile:
-	push hl
-	inc h
-	; ld a, 1
-	; and l
-	; jr z, .ret
-
-	ld a, l
-
-	ld b, 0
-	ld c, h
-
-	ld hl, buffer_lines
-	add hl, bc
-	add hl, bc
-	ld c, (hl)
-	inc hl
-	ld h, (hl)
-	ld l, c
-	ld c, a
-	add hl, bc
-	sla c
-	add hl, bc
-
-	ld a, (hl)
-	ld c, 3
-	add hl, bc
-	or (hl)
-	and 0x7f
-
-.ret
-	pop hl
+draw_debug_markup:
+	ld hl, 0x5800 + 22
+	ld de, 32
+	ld b, 22
+	ld a, 1
+1
+	.3 sla a
+	ld (hl), a
+	.3 sra a
+	inc a
+	and 7
+	add hl, de
+	djnz 1B
 	ret
+
 	endmodule

@@ -5,6 +5,7 @@ start:
 	ld sp, 0
 	call set_im2
 
+	; call map.draw_debug_markup
 	call redraw_map
 	; halt
 	; ld a, 1
