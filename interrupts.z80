@@ -17,6 +17,25 @@ set_im2:
     ei
     ret
 
+    macro object_loop callback
+        ld hl, objects
+1
+        push hl
+        ld a, (hl)
+        inc hl
+        ld h, (hl)
+        ld l, a
+        xor a
+        or h
+        jr z, 2F
+        call callback
+        pop hl
+        .2 inc hl
+        jr 1B
+2
+        pop hl
+    endm
+
 routine:
     di
 
@@ -42,22 +61,7 @@ routine:
     call map.recover_buffer
     call map.reset_arena
 
-    ld hl, objects
-.objects_loop:
-    push hl
-    ld a, (hl)
-    inc hl
-    ld h, (hl)
-    ld l, a
-    xor a
-    or h
-    jr z, 1F
-	call map.draw_object
-    pop hl
-    .2 inc hl
-    jr .objects_loop
-
-1   pop hl
+    object_loop map.draw_object
 
     xor a
     ld bc, 0x3ff

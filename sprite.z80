@@ -30,7 +30,7 @@ mirror_sprite:
 	ld sp, hl
 	ld h, high(mirror_table)
 
-	rept 48
+	rept 24
 		pop de
 
 		ld l, d
@@ -50,8 +50,19 @@ mirror_sprite:
 ; hl - sprite bitmap
 ; a - expected orientation (0 - right, 1 - left)
 ensure_orientation:
-	cp (hl)
-	call nz, mirror_sprite
-	ret
+	push bc
+	ld b, a
+	ld a, (hl)
+	and 0xf
+	cp b
+	pop bc
+	ret z ; in sync
+
+	; ld a, (hl)
+	; and 0x80
+	; ret nz ; symmetric
+
+	jp mirror_sprite
+	; ret
 
 	endmodule

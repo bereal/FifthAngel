@@ -1,0 +1,256 @@
+    module game
+
+    define SpriteSize      49
+    define FaceStand       0
+    define FaceWalk        1
+    define BackStand       2
+    define BackWalk        3
+    define SideStand       4
+    define SideWalk1       5
+    define SideWalk2       6
+
+    define DirectionFace    0b000
+    define DirectionBack    0b010
+    define DirectionRight   0b001
+    define DirectionLeft    0b011
+
+
+    struct character
+
+x           byte
+y           byte
+mirror byte
+sprite      word
+state       byte
+arg   byte
+spritesheet word
+    ends
+
+hero character 1, 1, 0, girl, 0, 0, girl
+
+mult_table:
+    rept 7, idx
+    dw idx * SpriteSize
+    endr
+
+
+;; ix - character (preserved)
+;; a - sprite number
+;; corrupts: hl, de
+update_sprite:
+    ld e, a
+    ld d, 0
+    ld hl, mult_table
+    add hl, de
+    add hl, de
+    ld e, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, e
+
+    ld e, (ix + character.spritesheet)
+    ld d, (ix + character.spritesheet + 1)
+
+    add hl, de
+
+    ld (ix + character.sprite), l
+    ld (ix + character.sprite + 1), h
+
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+stop_hero:
+    ld a, (hero.state)
+    or a
+    ret z
+
+    xor a
+    ld (hero.state), a
+    ld a, (hero.arg)   ; direction
+
+    cp DirectionFace
+    jr nz, 1F
+
+    xor a
+    ld e, a
+    jr .update
+
+1
+    cp DirectionBack
+    jr nz, 2F
+    xor a
+    ld e, BackStand
+    jr .update
+
+2
+    ld e, SideStand
+    rra
+
+.update
+    ld ix, hero
+    ; ld (ix + character.mirror), 0
+    ld a, e
+    call update_sprite
+
+    ld (ix + character.state), 0
+    ret
+
+move_hero_right:
+    ld a, (hero.arg)
+    cp DirectionRight
+    jr z, 1F
+
+    ; init moving state
+    xor a
+    ld (hero.state), a
+    xor a
+    ld (hero.mirror), a
+
+    ld a, DirectionRight
+    ld (hero.arg), a
+
+    ld a, 1
+    ld e, SideStand
+    jr .update
+
+1
+    ld a, (hero.state)
+    and 0xf
+    cp 1
+    jr nz, 2F
+
+    ld a, 2
+    ld e, SideWalk1
+    jr .update
+
+2
+    call map.move_hero_right
+    ld a, 1
+    ld e, SideWalk2
+
+.update
+    ld ix, hero
+    ld (ix + character.state), a
+    ld a, e
+    call update_sprite
+    ret
+
+
+move_hero_left:
+    ld a, (hero.arg)
+    cp DirectionLeft
+    jr z, 1F
+
+    ; init moving state
+    xor a
+    ld (hero.state), a
+    inc a
+    ld (hero.mirror), a
+    ld a, DirectionLeft
+    ld (hero.arg), a
+
+    ld a, 1
+    ld e, SideStand
+    jr .update
+
+1
+    ld a, (hero.state)
+    and 0xf
+    cp 1
+    jr nz, 2F
+
+    ld a, 2
+    ld e, SideWalk1
+    jr .update
+
+2
+    call map.move_hero_left
+    ld a, 1
+    ld e, SideWalk2
+
+.update
+    ld ix, hero
+    ld (ix + character.state), a
+    ld a, e
+    call update_sprite
+    ret
+
+move_hero_down:
+    ld ix, hero
+
+    ld a, (hero.arg)
+    cp DirectionFace
+    jr z, 1F
+
+    ; init moving state
+    ld a, DirectionFace
+    ld (hero.arg), a
+
+    xor a
+    ld (hero.state), a
+    ld (hero.mirror), a
+    ld de, FaceStand
+    jr .update
+
+1
+    ld a, (hero.state)
+    and 0xf
+    cp 1
+    jr nz, 2F
+
+    ld a, 2
+    ld de, FaceWalk
+    jr .update
+
+2
+    call map.move_hero_down
+    ld a, 1
+    ld de, 0x100 + FaceWalk
+
+.update
+    ld (ix + character.state), a
+    ld (ix + character.mirror), d
+    ld a, e
+    jp update_sprite
+
+
+move_hero_up:
+    ld ix, hero
+
+    ld a, (hero.arg)
+    cp DirectionBack
+    jr z, 1F
+
+    ; init moving state
+    ld a, DirectionBack
+    ld (hero.arg), a
+
+    xor a
+    ld (hero.state), a
+    ld (hero.mirror), a
+    ld de, BackStand
+    jr .update
+
+1
+    ld a, (hero.state)
+    and 0xf
+    cp 1
+    jr nz, 2F
+
+    ld a, 2
+    ld de, BackWalk
+    jr .update
+
+2
+    call map.move_hero_up
+    ld a, 1
+    ld de, 0x100 + BackWalk
+
+.update
+    ld (ix + character.state), a
+    ld (ix + character.mirror), d
+    ld a, e
+    jp update_sprite
+
+    endmodule

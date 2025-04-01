@@ -19,40 +19,46 @@ read:
 	halt
 	call read_defined_key
 .key
-	or a
-	jr z, read
+	; or a
+	; jr z, read
 	and 0b01111111
 	cp 1
 	jr nz, .notup
-	call move_hero_up
+	call game.move_hero_up
 	jr .next
 .notup
 	cp 2
 	jr nz, .notdown
-	call move_hero_down
+	call game.move_hero_down
 	jr .next
 .notdown
 	cp 3
 	jr nz, .notleft
-	call move_hero_left
+	call game.move_hero_left
 	jr .next
 .notleft
 	cp 4
-	jr nz, .next
-	call move_hero_right
+	jr nz, .stop
+	call game.move_hero_right
+	jr .next
+
+.stop
+	call game.stop_hero
 
 .next
+
 	.2 halt
 	jr read
 
-hero:
-.x db 1
-.y db 1
-.orientation db 0
-.sprite dw sprite_0
+; hero:
+
+; .x db 1
+; .y db 1
+; .orientation db 0
+; .sprite dw girl
 
 objects:
-	dw hero
+	dw game.hero
 	dw 0
 
 hello: db 'Press any key!', 0
@@ -61,9 +67,12 @@ hello: db 'Press any key!', 0
 	include "sprite.z80"
 	include "interrupts.z80"
 	include "memory.z80"
+	include "game.z80"
 
 	include "res/tiles.z80"
-	include "res/sprites.z80"
+
+girl:
+	incbin "res/girl.bin"
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start

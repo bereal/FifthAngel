@@ -682,8 +682,8 @@ copy_line:
 	endm
 
 	macro border color
-		ld a, color
-		out (254), a
+		; ld a, color
+		; out (254), a
 	endm
 
 copy_buffer:
@@ -1014,8 +1014,8 @@ scroll_map_down:
 	call set_full_redraw
 	ret
 
-@move_hero_up:
-	ld hl, (hero.x)
+move_hero_up:
+	ld hl, (game.hero.x)
 	dec h
 	ret m
 
@@ -1035,7 +1035,7 @@ scroll_map_down:
 	pop hl
 	ret nz
 
-	ld (hero.x), hl
+	ld (game.hero.x), hl
 	ld a, h
 	cp 64 - 12
 	call c, scroll_map_up
@@ -1044,8 +1044,8 @@ scroll_map_down:
 	ld (dirty_screen), a
 	ret
 
-@move_hero_down:
-	ld hl, (hero.x)
+move_hero_down:
+	ld hl, (game.hero.x)
 	inc h
 	ld a, h
 	cp MapSize * 2 - 3
@@ -1071,7 +1071,7 @@ scroll_map_down:
 	ret nz
 
 .aftercheck
-	ld (hero.x), hl
+	ld (game.hero.x), hl
 
 	ld a, h
 	cp 12
@@ -1081,20 +1081,16 @@ scroll_map_down:
 	ld (dirty_screen), a
 	ret
 
-@move_hero_right:
-	ld a, (hero.orientation)
-	or a
-	jr z, 1F
-	dec a
-	ld (hero.orientation), a
-	jr .exit
-
-1
-	ld hl, (hero.x)
+; set C if moved
+move_hero_right:
+	ld hl, (game.hero.x)
 	inc l
 	ld a, l
-	cp MapSize * 2 - 3
-	ret z
+	cp MapSize * 2 - 3 ; reached the right edge
+	jr nz, 1F
+	ccf
+	ret
+1
 
 	push hl
 	ld c, h
@@ -1107,13 +1103,13 @@ scroll_map_down:
 
 	ld a, c
 	and 1
-	jr z, 1F
+	jr z, 2F
 
 	ld a, (hl)
 	and 0x7f
 	jr z, .checked
 
-1
+2
 	ld bc, BufferRowSize
 	add hl, bc
 	ld a, (hl)
@@ -1121,33 +1117,36 @@ scroll_map_down:
 
 .checked
 	pop hl
-	ret nz
+	jr z, 3F
+	ccf
+	ret
 
+3
 	ld b, l
 	ld c, h
 
 	ld a, l
-	ld (hero.x), a
+	ld (game.hero.x), a
 	cp 12
 
 	call nc, scroll_map_right
 
-.exit
 	ld a, 1
 	ld (dirty_screen), a
+	scf
 	ret
 
-@move_hero_left:
-	ld a, (hero.orientation)
+move_hero_left:
+	ld a, (game.hero.mirror)
 	and 1
 	jr nz, 1F
 
 	ld a, 1
-	ld (hero.orientation), a
+	ld (game.hero.mirror), a
 	jr .exit
 
 1
-	ld hl, (hero.x)
+	ld hl, (game.hero.x)
 	ld a, l
 	or a
 	ret z
@@ -1183,7 +1182,7 @@ scroll_map_down:
 	ld c, h
 
 	ld a, l
-	ld (hero.x), a
+	ld (game.hero.x), a
 	cp 64 - 12
 	call c, scroll_map_left
 
