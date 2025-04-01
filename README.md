@@ -6,5 +6,5 @@ Resources are mostly packed using https://github.com/bereal/zools (wip)
 
 WIP demo (real sprites are coming soon)
 
-https://github.com/user-attachments/assets/0f275447-637b-4390-8023-00e618b0bb2c
+https://github.com/user-attachments/assets/b26e6943-019d-4bc6-b4b3-985f1bf56b4b
 
