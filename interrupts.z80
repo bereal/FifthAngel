@@ -63,12 +63,18 @@ routine:
 
     object_loop map.draw_object
 
+    ld a, (map.full_redraw)
+    or a
+    jr z, 2F
+
     xor a
     ld bc, 0x3ff
 1
     dec bc
     cp b
     jr nz, 1B
+
+2
 
     ; ld a, 1
     ; out (254), a

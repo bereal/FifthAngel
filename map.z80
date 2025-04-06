@@ -25,6 +25,8 @@ buffer_lines:
 		dw BufferAddr + line * BufferRowSize
 	endr
 
+full_redraw db 0
+
 screen_lines:
 	rept 12, line
 		dw 0x4000 + line * 32
@@ -558,6 +560,8 @@ scroll_buffer_up:
 	ret
 
 reset_full_redraw:
+	ld hl, full_redraw
+	ld (hl), 0
 	ld hl, 0x79cb ; CB 79 = bit 7, c
 	ld (copy_line.check_dirty), hl
 	ld hl, BufferLinesMask
@@ -568,6 +572,8 @@ reset_full_redraw:
 	ret
 
 set_full_redraw:
+	ld hl, full_redraw
+	ld (hl), 1
 	ld hl, 0
 	ld (copy_line.check_dirty), hl
 	ld hl, BufferLinesMask
