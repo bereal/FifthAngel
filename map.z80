@@ -17,7 +17,9 @@
 
 	define BufferLinesMask BufferAddr + BufferSize
 	define RecoveryQueue BufferLinesMask + Buffer_TH * 2
-	define SpriteArena RecoveryQueue + 48
+	define SpriteMixArena RecoveryQueue + 48
+	; each sprite takes up to 16 bytes when drawn, so max 10 sprites
+	define DoorsArena SpriteMixArena + 160
 
 	align 2
 buffer_lines:
@@ -39,7 +41,7 @@ screen_lines:
 	endr
 
 reset_arena:
-	ld hl, SpriteArena
+	ld hl, SpriteMixArena
 	call memory.init_arena
 	ret
 
@@ -65,6 +67,8 @@ buffered_map_coord:
 .x db 0
 .y db 0
 
+recovery_queue_size:
+	db 0
 recovery_queue_tail:
 	dw RecoveryQueue
 
@@ -167,7 +171,7 @@ coord_to_addr:
 draw_cell_with_mask:
 	ld (.set_sp+1), hl
 
-	ld hl, SpriteArena
+	ld hl, SpriteMixArena
 	ld bc, 8
 	call memory.alloc_arena
 
@@ -220,7 +224,7 @@ draw_cell_with_mask:
 draw_cell_ignore_mask:
 	push hl
 
-	ld hl, SpriteArena
+	ld hl, SpriteMixArena
 	ld bc, 8
 	call memory.alloc_arena
 
@@ -817,6 +821,9 @@ save_tile:
 	push bc
 	ex de, hl
 
+	ld a, (recovery_queue_size)
+	add 4
+	ld (recovery_queue_size), a
 	ld hl, (recovery_queue_tail)
 	ld (hl), e
 	inc hl
@@ -865,17 +872,29 @@ save_tile:
 	ret
 
 recover_buffer:
-	ld hl, RecoveryQueue
-	ld (recovery_queue_tail), hl
+	ld a, (recovery_queue_size)
+	or a
+	ret z
+
+	ld b, a
+	ld hl, (recovery_queue_tail)
+
+	; ld hl, RecoveryQueue
+	; ld (recovery_queue_tail), hl
+	ld de, 5
+	add hl, de
+
 .loop
+	ld de, -10
+	add hl, de
+
 	ld e, (hl)
 	inc hl
 
-	ld a, (hl)
-	or a
-	jr z, .cleanup
-	ld d, a
-
+	; ld a, (hl)
+	; or a
+	; jr z, .cleanup
+	ld d, (hl)
 	inc hl
 
 	ld a, (hl)
@@ -884,22 +903,16 @@ recover_buffer:
 	inc hl
 	inc de
 
+	ld a, b
 	.2 ldi
-
-	jp .loop
+	ld b, a
+	djnz .loop
 
 .cleanup
-	ld bc, 0x10000-(RecoveryQueue)
-	add hl, bc
-	ld a, l
-	or h
-	ret z
-	ld b, h
-	ld c, l
 	ld hl, RecoveryQueue
-	ld de, RecoveryQueue + 1
-	ld (hl), 0
-	ldir
+	ld (recovery_queue_tail), hl
+	xor a
+	ld (recovery_queue_size), a
 
 	ret
 
@@ -993,7 +1006,7 @@ scroll_map_down:
 	call set_full_redraw
 	ret
 
-@scroll_map_up:
+scroll_map_up:
 	call recover_buffer
 
 	ld a, (map_coord.y)

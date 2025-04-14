@@ -15,7 +15,7 @@
     define DirectionLeft    0b011
 
 
-    struct character
+    struct object
 
 x           byte
 y           byte
@@ -26,13 +26,14 @@ arg   byte
 spritesheet word
     ends
 
-hero character 1, 1, 0, girl, 0, 0, girl
+hero object 1, 1, 0, girl, 0, 0, girl
+
+door_1 object 22, 14, 0, door + SpriteSize, 0, 0, door
 
 mult_table:
     rept 7, idx
     dw idx * SpriteSize
     endr
-
 
 ;; ix - character (preserved)
 ;; a - sprite number
@@ -48,13 +49,13 @@ update_sprite:
     ld h, (hl)
     ld l, e
 
-    ld e, (ix + character.spritesheet)
-    ld d, (ix + character.spritesheet + 1)
+    ld e, (ix + object.spritesheet)
+    ld d, (ix + object.spritesheet + 1)
 
     add hl, de
 
-    ld (ix + character.sprite), l
-    ld (ix + character.sprite + 1), h
+    ld (ix + object.sprite), l
+    ld (ix + object.sprite + 1), h
 
     ld a, 1
     ld (dirty_screen), a
@@ -89,11 +90,11 @@ stop_hero:
 
 .update
     ld ix, hero
-    ; ld (ix + character.mirror), 0
+    ; ld (ix + object.mirror), 0
     ld a, e
     call update_sprite
 
-    ld (ix + character.state), 0
+    ld (ix + object.state), 0
     ret
 
 move_hero_right:
@@ -131,7 +132,7 @@ move_hero_right:
 
 .update
     ld ix, hero
-    ld (ix + character.state), a
+    ld (ix + object.state), a
     ld a, e
     call update_sprite
     ret
@@ -171,7 +172,7 @@ move_hero_left:
 
 .update
     ld ix, hero
-    ld (ix + character.state), a
+    ld (ix + object.state), a
     ld a, e
     call update_sprite
     ret
@@ -209,11 +210,10 @@ move_hero_down:
     ld de, 0x100 + FaceWalk
 
 .update
-    ld (ix + character.state), a
-    ld (ix + character.mirror), d
+    ld (ix + object.state), a
+    ld (ix + object.mirror), d
     ld a, e
     jp update_sprite
-
 
 move_hero_up:
     ld ix, hero
@@ -248,9 +248,12 @@ move_hero_up:
     ld de, 0x100 + BackWalk
 
 .update
-    ld (ix + character.state), a
-    ld (ix + character.mirror), d
+    ld (ix + object.state), a
+    ld (ix + object.mirror), d
     ld a, e
     jp update_sprite
+
+
+
 
     endmodule

@@ -59,6 +59,7 @@ read:
 
 objects:
 	dw game.hero
+	dw game.door_1
 	dw 0
 
 hello: db 'Press any key!', 0
@@ -73,6 +74,9 @@ hello: db 'Press any key!', 0
 
 girl:
 	incbin "res/girl.bin"
+
+door:
+	incbin "res/door.bin"
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
