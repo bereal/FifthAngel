@@ -17,7 +17,7 @@
 
 	define BufferLinesMask BufferAddr + BufferSize
 	define RecoveryQueue BufferLinesMask + Buffer_TH * 2
-	define SpriteMixArena RecoveryQueue + 48
+	define SpriteMixArena RecoveryQueue + 500
 	; each sprite takes up to 16 bytes when drawn, so max 10 sprites
 	define DoorsArena SpriteMixArena + 160
 
@@ -248,6 +248,10 @@ draw_cell_ignore_mask:
 ; hl - object address
 draw_object:
 	ld b, (hl) ; x
+	ld a, 0xff
+	cp b
+	ret z
+
 	inc l
 	ld c, (hl) ; y
 	inc l

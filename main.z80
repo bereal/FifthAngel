@@ -60,6 +60,8 @@ read:
 objects:
 	dw game.hero
 	dw game.door_1
+	dw game.door_2
+	dw game.door_3
 	dw 0
 
 hello: db 'Press any key!', 0

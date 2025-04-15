@@ -36,6 +36,18 @@ set_im2:
         pop hl
     endm
 
+call_behaviour:
+    push hl
+    pop ix
+    ld l, (ix + game.object.behaviour)
+    ld h, (ix + game.object.behaviour + 1)
+    ld a, h
+    or a
+    ret z
+
+    push hl
+    ret
+
 routine:
     di
 
@@ -54,10 +66,13 @@ routine:
     push de
     push hl
 
+    object_loop call_behaviour
+
     ld a, (dirty_screen)
     or a
     jr z, .skip_map_redraw
 
+.draw
     call map.recover_buffer
     call map.reset_arena
 

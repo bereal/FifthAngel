@@ -21,14 +21,16 @@ x           byte
 y           byte
 mirror byte
 sprite      word
-state       byte
-arg   byte
+state       word
 spritesheet word
+behaviour word
     ends
 
-hero object 1, 1, 0, girl, 0, 0, girl
+hero object 1, 1, 0, girl, 0, girl, 0
+door_1 object 4, 8, 0, door, 0, door, door_behaviour
+door_2 object 4, 14, 0, door, 0, door, door_behaviour
+door_3 object 22, 14, 0, door, 0, door, door_behaviour
 
-door_1 object 22, 14, 0, door + SpriteSize, 0, 0, door
 
 mult_table:
     rept 7, idx
@@ -68,7 +70,7 @@ stop_hero:
 
     xor a
     ld (hero.state), a
-    ld a, (hero.arg)   ; direction
+    ld a, (hero.state+1)   ; direction
 
     cp DirectionFace
     jr nz, 1F
@@ -98,7 +100,7 @@ stop_hero:
     ret
 
 move_hero_right:
-    ld a, (hero.arg)
+    ld a, (hero.state + 1)
     cp DirectionRight
     jr z, 1F
 
@@ -109,7 +111,7 @@ move_hero_right:
     ld (hero.mirror), a
 
     ld a, DirectionRight
-    ld (hero.arg), a
+    ld (hero.state + 1), a
 
     ld a, 1
     ld e, SideStand
@@ -139,7 +141,7 @@ move_hero_right:
 
 
 move_hero_left:
-    ld a, (hero.arg)
+    ld a, (hero.state + 1)
     cp DirectionLeft
     jr z, 1F
 
@@ -149,7 +151,7 @@ move_hero_left:
     inc a
     ld (hero.mirror), a
     ld a, DirectionLeft
-    ld (hero.arg), a
+    ld (hero.state + 1), a
 
     ld a, 1
     ld e, SideStand
@@ -180,13 +182,13 @@ move_hero_left:
 move_hero_down:
     ld ix, hero
 
-    ld a, (hero.arg)
+    ld a, (hero.state + 1)
     cp DirectionFace
     jr z, 1F
 
     ; init moving state
     ld a, DirectionFace
-    ld (hero.arg), a
+    ld (hero.state + 1), a
 
     xor a
     ld (hero.state), a
@@ -218,13 +220,13 @@ move_hero_down:
 move_hero_up:
     ld ix, hero
 
-    ld a, (hero.arg)
+    ld a, (hero.state + 1)
     cp DirectionBack
     jr z, 1F
 
     ; init moving state
     ld a, DirectionBack
-    ld (hero.arg), a
+    ld (hero.state + 1), a
 
     xor a
     ld (hero.state), a
@@ -254,6 +256,54 @@ move_hero_up:
     jp update_sprite
 
 
+door_behaviour:
+    ld a, (ix + object.state)
+    cp 0xff ; open, nothing to do
+    ret z
 
+    or a ; fully closed
+    jr nz, .opening
+
+    ld hl, hero
+    ld a, (ix + object.x)
+    cp (hl)
+    ret nz
+
+    inc hl
+    ld a, (ix + object.y)
+    sub (hl)
+    cp 1
+    jr z, .start_opening
+    neg
+    cp 1
+    ret nz
+
+.start_opening
+    ld (ix + object.state), 1
+    ret
+
+.opening
+    cp 7
+    jr nz, 1F
+    ; done opening, deactivate the door
+    ld (ix), 0xff
+    ld (ix + object.state), 0xff
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+1
+    bit 0, a
+    jr z, 2F
+    inc a
+    ld (ix + object.state), a
+    ret
+
+2
+    inc a
+    ld (ix + object.state), a
+    sra a
+    call update_sprite
+    ret
 
     endmodule
