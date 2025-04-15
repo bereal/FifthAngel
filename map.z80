@@ -247,14 +247,14 @@ draw_cell_ignore_mask:
 
 ; hl - object address
 draw_object:
-	ld b, (hl) ; x
+	ld c, (hl) ; y
 	ld a, 0xff
-	cp b
+	cp c
 	ret z
 
-	inc l
-	ld c, (hl) ; y
-	inc l
+	inc hl
+	ld b, (hl) ; y
+	inc hl
 
 	ld a, (hl)
 	inc hl
@@ -1038,13 +1038,13 @@ scroll_map_up:
 	ret
 
 move_hero_up:
-	ld hl, (game.hero.x)
-	dec h
+	ld hl, (game.hero)
+	dec l
 	ret m
 
 	push hl
-	ld c, h
-	ld b, l
+	ld c, l
+	ld b, h
 	inc c
 	call coord_to_addr
 	ld a, (hl)
@@ -1058,8 +1058,8 @@ move_hero_up:
 	pop hl
 	ret nz
 
-	ld (game.hero.x), hl
-	ld a, h
+	ld (game.hero), hl
+	ld a, l
 	cp 64 - 12
 	call c, scroll_map_up
 
@@ -1068,18 +1068,15 @@ move_hero_up:
 	ret
 
 move_hero_down:
-	ld hl, (game.hero.x)
-	inc h
-	ld a, h
-	cp MapSize * 2 - 3
-	ret z
-
+	ld hl, (game.hero)
+	inc l
+	ld a, l
 	and 1
 	jr nz, .aftercheck
 
 	push hl
-	ld c, h
-	ld b, l
+	ld b, h
+	ld c, l
 	inc c
 
 	call coord_to_addr
@@ -1094,9 +1091,9 @@ move_hero_down:
 	ret nz
 
 .aftercheck
-	ld (game.hero.x), hl
+	ld (game.hero), hl
 
-	ld a, h
+	ld a, l
 	cp 12
 	call nc, scroll_map_down
 
@@ -1106,18 +1103,12 @@ move_hero_down:
 
 ; set C if moved
 move_hero_right:
-	ld hl, (game.hero.x)
-	inc l
-	ld a, l
-	cp MapSize * 2 - 3 ; reached the right edge
-	jr nz, 1F
-	ccf
-	ret
-1
+	ld hl, (game.hero)
+	inc h
 
 	push hl
-	ld c, h
-	ld b, l
+	ld b, h
+	ld c, l
 	inc b
 
 	push bc
@@ -1148,7 +1139,7 @@ move_hero_right:
 	ld b, l
 	ld c, h
 
-	ld a, l
+	ld a, h
 	ld (game.hero.x), a
 	cp 12
 
@@ -1160,24 +1151,15 @@ move_hero_right:
 	ret
 
 move_hero_left:
-	ld a, (game.hero.mirror)
-	and 1
-	jr nz, 1F
-
-	ld a, 1
-	ld (game.hero.mirror), a
-	jr .exit
-
-1
-	ld hl, (game.hero.x)
-	ld a, l
+	ld hl, (game.hero)
+	ld a, h
 	or a
 	ret z
-	dec l
+	dec h
 
 	push hl
-	ld c, h
-	ld b, l
+	ld c, l
+	ld b, h
 
 	push bc
 	call coord_to_addr
@@ -1201,10 +1183,10 @@ move_hero_left:
 	pop hl
 	ret nz
 
-	ld b, l
-	ld c, h
+	ld b, h
+	ld c, l
 
-	ld a, l
+	ld a, h
 	ld (game.hero.x), a
 	cp 64 - 12
 	call c, scroll_map_left

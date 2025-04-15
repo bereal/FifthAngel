@@ -17,8 +17,8 @@
 
     struct object
 
-x           byte
 y           byte
+x           byte
 mirror byte
 sprite      word
 state       word
@@ -27,9 +27,9 @@ behaviour word
     ends
 
 hero object 1, 1, 0, girl, 0, girl, 0
-door_1 object 4, 8, 0, door, 0, door, door_behaviour
-door_2 object 4, 14, 0, door, 0, door, door_behaviour
-door_3 object 22, 14, 0, door, 0, door, door_behaviour
+door_1 object 8, 4, 0, door, 0, door, door_behaviour
+door_2 object 14, 4, 0, door, 0, door, door_behaviour
+door_3 object 14, 22, 0, door, 0, door, door_behaviour
 
 
 mult_table:
@@ -264,14 +264,12 @@ door_behaviour:
     or a ; fully closed
     jr nz, .opening
 
-    ld hl, hero
-    ld a, (ix + object.x)
-    cp (hl)
+    ld a, (hero.x)
+    cp (ix + object.x)
     ret nz
 
-    inc hl
-    ld a, (ix + object.y)
-    sub (hl)
+    ld a, (hero.y)
+    sub (ix + object.y)
     cp 1
     jr z, .start_opening
     neg
