@@ -80,7 +80,7 @@ buffered_map_addr:
 	dw test_level
 
 test_level:
-	include "res/test_level.z80"
+	include "res/gen/levels/test_level.z80"
 
 	macro resolve_tile
 		ld a, (hl)

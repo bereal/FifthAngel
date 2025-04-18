@@ -72,13 +72,13 @@ hello: db 'Press any key!', 0
 	include "memory.z80"
 	include "game.z80"
 
-	include "res/tiles.z80"
+	include "res/gen/tiles.z80"
 
 girl:
-	incbin "res/girl.bin"
+	incbin "res/gen/sprites/girl.bin"
 
 door:
-	incbin "res/door.bin"
+	incbin "res/gen/sprites/door.bin"
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
