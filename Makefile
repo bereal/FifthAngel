@@ -10,6 +10,8 @@ SPRITE_BIN := $(addprefix res/gen/sprites/,$(notdir $(SPRITE_SRC:.png=.bin)))
 LEVELS_SRC := $(shell find res/levels/*.tmx)
 LEVELS_GEN := $(addprefix res/gen/levels/,$(notdir $(LEVELS_SRC:.tmx=.z80)))
 
+FONTS_SRC := $(shell find res/fonts/*.yaml)
+
 all: $(TAP)
 
 $(GEN)/levels/%.z80: res/levels/%.tmx
@@ -24,7 +26,11 @@ $(GEN)/tiles.z80: res/tiles.tsx
 	mkdir -p $(dir $@)
 	zools encode-tiles $< --encoding asm -o $@
 
-$(TAP): loader.bas $(shell find . -name \*.z80) $(SPRITE_BIN) $(LEVELS_GEN) $(GEN)/tiles.z80
+$(GEN)/fonts.z80: $(FONTS_SRC)
+	mkdir -p $(dir $@)
+	zools encode-fonts $^ -o $@
+
+$(TAP): loader.bas $(shell find . -name \*.z80) $(SPRITE_BIN) $(LEVELS_GEN) $(GEN)/tiles.z80 $(GEN)/fonts.z80
 	mkdir -p $(BUILD_DIR)
 	bas2tap -a loader.bas $@
 	sjasmplus -DTAPNAME='"$@"' -DSNANAME='"$(SNA)"' --sym=symbols.txt --sld=build/angel5.sld main.z80
