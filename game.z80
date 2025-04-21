@@ -284,6 +284,9 @@ door_behaviour:
     cp 7
     jr nz, 1F
     ; done opening, deactivate the door
+    ld hl, i18n.door_open
+    call console.print_localized
+    call console.newline
     ld (ix), 0xff
     ld (ix + object.state), 0xff
     ld a, 1

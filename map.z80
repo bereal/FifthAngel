@@ -811,9 +811,6 @@ copy_buffer:
 
 	do_copy_line 0x50a0, 0x5a
 
-	ld a, 0
-	out (254), a
-
 	call reset_full_redraw
 	ret
 

@@ -5,6 +5,24 @@ start:
 	ld sp, 0
 	call set_im2
 
+	; set the output area to green
+	ld b, 8
+	ld hl, 0x5800 + 22
+1
+	ld (hl), 0b01000100
+	ld d, h
+	ld e, l
+	inc de
+	push bc
+	push hl
+	ld bc, 9
+	ldir
+	pop hl
+	ld bc, 32
+	add hl, bc
+	pop bc
+	djnz 1B
+
 	; call map.draw_debug_markup
 	call redraw_map
 	; halt
@@ -13,31 +31,60 @@ start:
 	ld a, 1
 	ld (dirty_screen), a
 
+	ld hl, font
+	call console.set_font
+
+	ld h, 0
+	ld l, 22
+	call console.set_pos
+
 	halt
 
 read:
 	halt
-	call read_defined_key
+	call read_key
 .key
 	; or a
 	; jr z, read
 	and 0b01111111
-	cp 1
+	cp '1'
+	jr nz, .not1
+
+	ld a, 0
+	call console.set_locale
+
+	ld hl, i18n.locale
+	call console.print_localized
+	call console.newline
+	jr .next
+
+.not1
+	cp '2':
+	jr nz, .not2
+	ld a, 1
+	call console.set_locale
+	ld hl, i18n.locale
+	call console.print_localized
+	call console.newline
+	jr .next
+
+.not2
+	cp 'Q'
 	jr nz, .notup
 	call game.move_hero_up
 	jr .next
 .notup
-	cp 2
+	cp 'A'
 	jr nz, .notdown
 	call game.move_hero_down
 	jr .next
 .notdown
-	cp 3
+	cp 'O'
 	jr nz, .notleft
 	call game.move_hero_left
 	jr .next
 .notleft
-	cp 4
+	cp 'P'
 	jr nz, .stop
 	call game.move_hero_right
 	jr .next
@@ -47,7 +94,7 @@ read:
 
 .next
 
-	.2 halt
+	.3 halt
 	jr read
 
 ; hero:
@@ -71,6 +118,8 @@ hello: db 'Press any key!', 0
 	include "interrupts.z80"
 	include "memory.z80"
 	include "game.z80"
+	include "screen.z80"
+	include "console.z80"
 
 	include "res/gen/tiles.z80"
 
@@ -79,6 +128,13 @@ girl:
 
 door:
 	incbin "res/gen/sprites/door.bin"
+
+font:
+	include "res/gen/fonts.z80"
+
+	module i18n
+	include "res/gen/i18n.z80"
+	endmodule
 
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start

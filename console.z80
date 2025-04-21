@@ -1,0 +1,234 @@
+		module console
+rotation        db      0
+term_addr       dw 0x4000
+position 		dw 0
+column	db      0
+row             db      0
+
+
+;; h - row
+;; l - col
+set_pos:
+	push hl
+	ld (column), hl
+	call screen.pos_to_screen_addr
+	ld (term_addr), hl
+	ld hl, print_letter.rot_setter + 1
+	ld (hl), 0
+	pop hl
+	ret
+
+newline:
+	push hl
+	ld hl, (column)
+	inc h
+	call set_pos
+	ld hl, print_letter.rot_setter + 1
+	ld (hl), 0
+	pop hl
+	ret
+
+set_font:
+	ld (print_letter.font_setter + 1), hl
+	ret
+
+set_locale:
+	ld (print_localized.locale_setter + 1), a
+	ret
+
+print_letter:
+	push af
+	push bc
+	push de
+	push hl
+	cp 0x0b
+	jr nc, .regular
+
+;; special character
+	cp 0x0a 							;; eol
+	jr nz, .special_1
+	call newline
+	jr .exit
+
+.special_1:
+	cp 8
+	jr nz, .exit 							;; unknown code, ignore
+	ld a, - 1
+	jp .update_position
+
+.regular:
+	sub 0x20
+	bit 7, a
+	jr z, 1F
+	sub 0x20
+
+1
+	ld e, a
+	ld d, 0
+	rl e, d, e, d, e, d
+.font_setter:
+	ld hl, 0 							;; self-modified
+	add hl, de
+	ld d, h
+	ld e, l 							;; de - char description
+	ld hl, (term_addr)
+	inc h
+	ld c, 7
+
+.letter_loop:
+	push bc
+	ld a, (de)
+.rot_setter:
+	ld b, 0
+	inc b
+	ld c, 0
+1
+	rra
+	rr c
+	djnz 1B
+
+	or (hl)
+	ld (hl), a
+	inc hl
+	ld a, c
+	or (hl)
+	ld (hl), a
+	dec hl
+
+	inc h
+	inc de
+
+	pop bc
+	dec c
+	jr nz, .letter_loop
+
+	ld a, (de)
+	inc a
+
+.update_position:
+	ld hl, term_addr
+	ld c, a
+	ld a, (.rot_setter + 1)
+	add c
+	bit 7, a
+	jr z, .shift_right
+	dec (hl)
+	add 8
+	jr .save_rotation
+.shift_right:
+	cp 8
+	jr c, .save_rotation
+	inc (hl)
+	sub 8
+
+.save_rotation:
+	ld (.rot_setter + 1), a
+
+.exit:
+	pop hl, de, bc, af
+	ret
+
+
+print_string:
+	ld a, (hl)
+	or a
+	ret z
+	cp 8 								; <8 are escape sequences
+	call nc, print_letter
+	inc hl
+	cp 1
+	jr nz, print_string
+	call print_decimal
+	inc hl
+	inc hl
+	jp print_string
+
+
+print_decimal:
+; (hl) - address of int variable
+; af is not preserved
+	push bc, de, hl
+
+	ld de, decimal_buf
+	ld a, 2 							; unused special char, will be ignored
+	ld (de), a
+	inc de
+	ld (de), a
+	inc de
+	ld (de), a
+	inc de
+	ld (de), a
+	inc de
+	ld a, '0'
+	ld (de), a
+	ld de, decimal_buf
+
+; ld hl, ((hl))
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+
+
+	ld bc, - 10000
+	call dec_char
+	ld bc, - 1000
+	call dec_char
+	ld bc, - 100
+	call dec_char
+	ld bc, - 10
+	call dec_char
+	ld c, b
+	call dec_char
+
+	ld hl, decimal_buf
+	call print_string
+	pop hl, de, bc
+	ret
+dec_char:
+	ld a, - 1
+dec_char_1:
+	inc a
+	add hl, bc
+	jr c, dec_char_1
+	sbc hl, bc
+
+	or a
+	jr z, dec_char_skip
+	add '0'
+	ld (de), a
+dec_char_skip:
+	inc de
+	ret
+
+decimal_buf:
+	defb    0,0,0,0,0,0
+
+print_localized:
+	push af
+	push de
+	push hl
+
+.locale_setter:
+	ld e, 0
+	ld d, 0
+	add hl, de
+	add hl, de
+
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+
+	call print_string
+	pop hl
+	pop de
+	pop af
+
+	ret
+
+	endmodule

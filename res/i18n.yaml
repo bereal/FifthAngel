@@ -1,0 +1,6 @@
+locale:
+  en: "En"
+  ru: "Ру"
+door_open:
+  en: "Door has opened"
+  ru: "Дверь открылась"

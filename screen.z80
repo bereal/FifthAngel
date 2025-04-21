@@ -1,0 +1,26 @@
+    module screen
+
+lookup_table:
+    dw 0x4000, 0x4020, 0x4040, 0x4060, 0x4080, 0x40A0, 0x40C0, 0x40E0
+    dw 0x4800, 0x4820, 0x4840, 0x4860, 0x4880, 0x48A0, 0x48C0, 0x48E0
+    dw 0x5000, 0x5020, 0x5040, 0x5060, 0x5080, 0x50A0, 0x50C0, 0x50E0
+
+; h = row, l = column
+pos_to_screen_addr:
+    ld a, l
+    ld d, 0
+    ld e, h
+    ld hl, lookup_table
+    add hl, de
+    add hl, de
+
+    ld e, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, e
+
+    ld e, a
+    add hl, de
+    ret
+
+    endmodule
