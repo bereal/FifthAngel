@@ -36,7 +36,9 @@ start:
 
 	ld h, 0
 	ld l, 22
-	call console.set_pos
+	ld d, 10
+	ld e, 4
+	call console.init
 
 	halt
 
@@ -94,7 +96,7 @@ read:
 
 .next
 
-	.3 halt
+	.2 halt
 	jr read
 
 ; hero:
@@ -128,6 +130,9 @@ girl:
 
 door:
 	incbin "res/gen/sprites/door.bin"
+
+; dude:
+; 	incbin "res/gen/sprites/mov_1.bin"
 
 font:
 	include "res/gen/fonts.z80"

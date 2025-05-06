@@ -1,30 +1,51 @@
 		module console
-rotation        db      0
-term_addr       dw 0x4000
-position 		dw 0
-column	db      0
-row             db      0
+area	screen.screen_area
+cur_addr	dw 0x4000
+cur_col      db 0
+cur_row      db 0
+free_rows    db 0
 
-
-;; h - row
-;; l - col
-set_pos:
-	push hl
-	ld (column), hl
+init:
+	ld (cur_col), hl
 	call screen.pos_to_screen_addr
-	ld (term_addr), hl
+	ld (cur_addr), hl
+	ld (area.bitmap), hl
+	ex de, hl
+	ld (area.height), hl
+	ld a, l
+	ld (free_rows), a
+	ld hl, print_letter.rot_setter + 1
+	ld (hl), 0
+	ret
+
+newline:
+	push hl
+	ld a, (free_rows)
+	dec a
+	jr z, .scroll
+
+	ld (free_rows), a
+
+	ld hl, (cur_col)
+	inc h
+	ld (cur_col), hl
+	call screen.pos_to_screen_addr
+	ld (cur_addr), hl
 	ld hl, print_letter.rot_setter + 1
 	ld (hl), 0
 	pop hl
 	ret
 
-newline:
-	push hl
-	ld hl, (column)
-	inc h
-	call set_pos
+.scroll:
+	push ix
+	ld ix, area
+	call screen.scroll_area_up
+	ld hl, (cur_col)
+	call screen.pos_to_screen_addr
+	ld (cur_addr), hl
 	ld hl, print_letter.rot_setter + 1
 	ld (hl), 0
+	pop ix
 	pop hl
 	ret
 
@@ -63,15 +84,15 @@ print_letter:
 	sub 0x20
 
 1
-	ld e, a
-	ld d, 0
-	rl e, d, e, d, e, d
+	ld l, a
+	ld h, 0
+	.3 add hl, hl
 .font_setter:
-	ld hl, 0 							;; self-modified
+	ld de, 0 							;; self-modified
 	add hl, de
 	ld d, h
 	ld e, l 							;; de - char description
-	ld hl, (term_addr)
+	ld hl, (cur_addr)
 	inc h
 	ld c, 7
 
@@ -106,7 +127,7 @@ print_letter:
 	inc a
 
 .update_position:
-	ld hl, term_addr
+	ld hl, cur_addr
 	ld c, a
 	ld a, (.rot_setter + 1)
 	add c
