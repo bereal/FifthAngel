@@ -4,3 +4,6 @@ locale:
 door_open:
   en: "Door has opened"
   ru: "Дверь открылась"
+door_closed:
+  en: "Door has closed"
+  ru: "Дверь закрылась"

@@ -34,10 +34,10 @@ start:
 	ld hl, font
 	call console.set_font
 
-	ld h, 0
-	ld l, 22
-	ld d, 10
-	ld e, 4
+	ld h, 22
+	ld l, 0
+	ld d, 22
+	ld e, 2
 	call console.init
 
 	halt
@@ -57,7 +57,6 @@ read:
 
 	ld hl, i18n.locale
 	call console.print_localized
-	call console.newline
 	jr .next
 
 .not1
@@ -67,7 +66,6 @@ read:
 	call console.set_locale
 	ld hl, i18n.locale
 	call console.print_localized
-	call console.newline
 	jr .next
 
 .not2

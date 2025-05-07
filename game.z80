@@ -271,6 +271,8 @@ door_behaviour:
     and 0x0f
     or a
     jr nz, 1F
+    ld hl, i18n.door_closed
+    call console.print_localized
     ld (ix + object.state), 0
     ld a, 1
     ld (dirty_screen), a
@@ -341,7 +343,6 @@ door_behaviour:
     ld hl, i18n.door_open
     push ix
     call console.print_localized
-    call console.newline
     pop ix
     ld a, (ix)
     or 0x80
