@@ -34,13 +34,14 @@ start:
 	ld hl, font
 	call console.set_font
 
-	ld h, 22
-	ld l, 0
-	ld d, 22
-	ld e, 2
+	ld h, 0
+	ld l, 22
+	ld d, 10
+	ld e, 1
 	call console.init
 
-	halt
+	; di
+	; halt
 
 read:
 	halt

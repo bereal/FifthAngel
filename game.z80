@@ -26,6 +26,8 @@ spritesheet word
 behaviour word
     ends
 
+total_steps dw 0
+
 hero object 1, 1, 0, girl, 0, girl, 0
 door_1 object 8, 4, 0, door, 0, door, door_behaviour
 door_2 object 14, 4, 0, door, 0, door, door_behaviour
@@ -129,6 +131,7 @@ move_hero_right:
 
 2
     call map.move_hero_right
+    call log_steps
     ld a, 1
     ld e, SideWalk2
 
@@ -169,6 +172,7 @@ move_hero_left:
 
 2
     call map.move_hero_left
+    call log_steps
     ld a, 1
     ld e, SideWalk2
 
@@ -208,6 +212,7 @@ move_hero_down:
 
 2
     call map.move_hero_down
+    call log_steps
     ld a, 1
     ld de, 0x100 + FaceWalk
 
@@ -246,6 +251,7 @@ move_hero_up:
 
 2
     call map.move_hero_up
+    call log_steps
     ld a, 1
     ld de, 0x100 + BackWalk
 
@@ -255,6 +261,12 @@ move_hero_up:
     ld a, e
     jp update_sprite
 
+
+log_steps:
+	ld hl, game.total_steps
+	inc (hl)
+	ld hl, i18n.step
+	jp console.print_localized
 
 door_behaviour:
     ld a, (ix + object.state)
@@ -271,8 +283,8 @@ door_behaviour:
     and 0x0f
     or a
     jr nz, 1F
-    ld hl, i18n.door_closed
-    call console.print_localized
+    ; ld hl, i18n.door_closed
+    ; call console.print_localized
     ld (ix + object.state), 0
     ld a, 1
     ld (dirty_screen), a
@@ -340,10 +352,10 @@ door_behaviour:
     cp 5
     jr nz, 1F
     ; done opening, deactivate the door
-    ld hl, i18n.door_open
-    push ix
-    call console.print_localized
-    pop ix
+    ; ld hl, i18n.door_open
+    ; push ix
+    ; call console.print_localized
+    ; pop ix
     ld a, (ix)
     or 0x80
     ld (ix), a ; hide object by moving it off-screen

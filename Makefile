@@ -30,7 +30,7 @@ $(GEN)/tiles.z80: res/tiles.tsx
 
 $(GEN)/i18n.z80: $(I18N_SRC)
 	mkdir -p $(dir $@)
-	zools encode-text --langs en,ru $^ -o $@
+	zools encode-text --langs ru $^ -o $@
 
 $(GEN)/fonts.z80: $(FONTS_SRC)
 	mkdir -p $(dir $@)

@@ -151,14 +151,6 @@ print_letter:
 
 
 print_string:
-	ld a, (pending_newline)
-	or a
-	jr z, 1F
-	call newline
-	xor a
-	ld (pending_newline), a
-
-1
 	ld a, (hl)
 	or a
 	jr z, .exit
@@ -166,14 +158,27 @@ print_string:
 	call nc, print_letter
 	inc hl
 	cp 1
+	jr nz, 2F
+	ld a, (print_letter.rot_setter + 1)
+	dec a
+	and 7
+	ld (print_letter.rot_setter + 1), a
+
+	cp 7
+	jr nz, print_string
+	ld a, (cur_addr)
+	dec a
+	ld (cur_addr), a
+	jp print_string
+
+2
+	cp 2
 	jr nz, print_string
 	call print_decimal
-	inc hl
-	inc hl
+	.2 inc hl
 	jp print_string
+
 .exit
-	ld a, 1
-	ld (pending_newline), a
 	ret
 
 print_decimal:
@@ -182,7 +187,7 @@ print_decimal:
 	push bc, de, hl
 
 	ld de, decimal_buf
-	ld a, 2 							; unused special char, will be ignored
+	ld a, 7 							; unused special char, will be ignored
 	ld (de), a
 	inc de
 	ld (de), a
@@ -204,7 +209,6 @@ print_decimal:
 	inc hl
 	ld h, (hl)
 	ld l, a
-
 
 	ld bc, - 10000
 	call dec_char
@@ -245,6 +249,13 @@ print_localized:
 	push de
 	push hl
 
+	ld a, (pending_newline)
+	or a
+	jr z, .locale_setter
+	call newline
+	xor a
+	ld (pending_newline), a
+
 .locale_setter:
 	ld e, 0
 	ld d, 0
@@ -257,6 +268,9 @@ print_localized:
 	ld l, a
 
 	call print_string
+	ld a, 1
+	ld (pending_newline), a
+
 	pop hl
 	pop de
 	pop af

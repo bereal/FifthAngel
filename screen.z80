@@ -33,21 +33,35 @@ height byte
 width byte
     ends
 
+    macro down_row X, Y
+        ld a, Y
+        add 0x20
+        ld Y, a
+        jr nc, 1F
+        ld a, X
+        add 8
+        ld X, a
+1
+    endm
 
 ; idx - area
 scroll_area_up:
     push hl, bc, de, af
     ld l, (ix + screen_area.bitmap)
     ld h, (ix + screen_area.bitmap + 1)
-    ld bc, 0x20
-    ld e, l
-    ld d, h
-    add hl, bc
 
     ld a, (ix + screen_area.height)
     dec a
+    ld b, a
+    ld a, 8
+    jp z, .clear
+
+    ld e, l
+    ld d, h
+    down_row h, l
 
 .loop
+    push bc
     ld b, 0
     push hl
     push de
@@ -71,14 +85,16 @@ scroll_area_up:
     pop de
     pop hl
 
-    ld bc, 0x20
-    add hl, bc
-    ex de, hl
-    add hl, bc
-    ex de, hl
+    down_row d, e
+    down_row h, l
 
-    dec a
-    jr nz, .loop
+    ; add hl, bc
+    ; ex de, hl
+    ; add hl, bc
+    ; ex de, hl
+
+    pop bc
+    djnz .loop
 
     ; clean the last row
     ex de, hl
