@@ -1,23 +1,49 @@
 		module console
-area	screen.screen_area
+
+area	screen.area
 cur_addr	dw 0x4000
 cur_col      db 0
 cur_row      db 0
 free_rows    db 0
 pending_newline db 0
 
+; hl - screen row / col
+; de - screen width / height
+; a - attribute (zero is ignored)
 init:
+	push af
 	ld (cur_col), hl
-	call screen.pos_to_screen_addr
-	ld (cur_addr), hl
-	ld (area.bitmap), hl
-	ex de, hl
-	ld (area.height), hl
-	ld a, l
+	ld a, e
 	ld (free_rows), a
+
+	ld ix, area
+	call screen.init_area
+
+	ld hl, (area + screen.area.column)
+	ld hl, (ix + screen.area.bitmap)
+	ld (cur_addr), hl
+
 	ld hl, print_letter.rot_setter + 1
 	ld (hl), 0
+	pop af
+	or a
+	call nz, screen.set_area_attr
 	ret
+
+clear:
+	ld ix, area
+	jp screen.clean_area
+	ld hl, (area + screen.area.column)
+	ld (cur_col), hl
+	xor a
+	ld (pending_newline), a
+	ld a, (area + area.height)
+	ld (free_rows), a
+	ret
+
+invert_row:
+	ld ix, area
+	jp screen.invert_row
 
 newline:
 	push hl
@@ -41,7 +67,7 @@ newline:
 	pop ix
 
 .end
-	call screen.pos_to_screen_addr
+	call screen.pos_to_bitmap_addr
 	ld (cur_addr), hl
 	ld hl, print_letter.rot_setter + 1
 	ld (hl), 0

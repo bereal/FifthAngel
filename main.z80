@@ -5,24 +5,6 @@ start:
 	ld sp, 0
 	call set_im2
 
-	; set the output area to green
-	ld b, 8
-	ld hl, 0x5800 + 22
-1
-	ld (hl), 0b01000100
-	ld d, h
-	ld e, l
-	inc de
-	push bc
-	push hl
-	ld bc, 9
-	ldir
-	pop hl
-	ld bc, 32
-	add hl, bc
-	pop bc
-	djnz 1B
-
 	; call map.draw_debug_markup
 	call redraw_map
 	; halt
@@ -34,14 +16,15 @@ start:
 	ld hl, font
 	call console.set_font
 
+	ld a, 0b01000100
 	ld h, 0
 	ld l, 22
 	ld d, 10
 	ld e, 1
 	call console.init
 
-	; di
-	; halt
+	; xor a
+	; call console.invert_row
 
 read:
 	halt
@@ -86,15 +69,19 @@ read:
 	jr .next
 .notleft
 	cp 'P'
-	jr nz, .stop
+	jr nz, .notright
 	call game.move_hero_right
+	jr .next
+.notright
+	cp '0'
+	jr nz, .stop
+	call console.clear
 	jr .next
 
 .stop
 	call game.stop_hero
 
 .next
-
 	.2 halt
 	jr read
 
