@@ -266,6 +266,7 @@ log_steps:
 	ld hl, game.total_steps
 	inc (hl)
 	ld hl, i18n.step
+    ld ix, default_console
 	jp console.print_localized
 
 door_behaviour:

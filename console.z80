@@ -1,76 +1,77 @@
 		module console
 
+	struct console
 area	screen.area
-cur_addr	dw 0x4000
-cur_col      db 0
-cur_row      db 0
-free_rows    db 0
-pending_newline db 0
+cur_addr	word
+cur_col     byte
+cur_row     byte
+free_rows   byte
+pending_newline byte
+rotation byte
+	ends
 
+default_console:
+	console
+
+; ix - console
 ; hl - screen row / col
 ; de - screen width / height
 ; a - attribute (zero is ignored)
 init:
 	push af
-	ld (cur_col), hl
+	ld (ix + console.cur_col), hl
 	ld a, e
-	ld (free_rows), a
+	ld (ix + console.free_rows), a
 
-	ld ix, area
 	call screen.init_area
 
-	ld hl, (area + screen.area.column)
 	ld hl, (ix + screen.area.bitmap)
-	ld (cur_addr), hl
+	ld (ix + console.cur_addr), hl
 
-	ld hl, print_letter.rot_setter + 1
-	ld (hl), 0
+	xor a
+	ld (ix + console.rotation), a
 	pop af
 	or a
 	call nz, screen.set_area_attr
 	ret
 
+; ix - console
 clear:
-	ld ix, area
-	jp screen.clean_area
-	ld hl, (area + screen.area.column)
-	ld (cur_col), hl
+	call screen.clean_area
+	ld hl, (ix + console.area.column)
+	ld (ix + console.cur_col), hl
 	xor a
-	ld (pending_newline), a
-	ld a, (area + area.height)
-	ld (free_rows), a
+	ld (ix + console.pending_newline), a
+	ld a, (ix + console.area.height)
+	ld (ix + console.free_rows), a
 	ret
 
-invert_row:
-	ld ix, area
-	jp screen.invert_row
+; invert_row:
+; 	ld ix, area
+; 	jp screen.invert_row
 
 newline:
 	push hl
 
-	ld a, (free_rows)
+	ld a, (ix + console.free_rows)
 	dec a
 	jr z, .scroll
 
-	ld (free_rows), a
+	ld (ix + console.free_rows), a
 
-	ld hl, (cur_col)
+	ld hl, (ix + console.cur_col)
 	inc h
-	ld (cur_col), hl
+	ld (ix + console.cur_col), hl
 	jr .end
 
 .scroll:
-	push ix
-	ld ix, area
 	call screen.scroll_area_up
-	ld hl, (cur_col)
-	pop ix
+	ld hl, (ix + console.cur_col)
 
 .end
 	call screen.pos_to_bitmap_addr
-	ld (cur_addr), hl
-	ld hl, print_letter.rot_setter + 1
-	ld (hl), 0
+	ld (ix + console.cur_addr), hl
+	ld (ix + console.rotation), 0
 
 	pop hl
 	ret
@@ -118,15 +119,14 @@ print_letter:
 	add hl, de
 	ld d, h
 	ld e, l 							;; de - char description
-	ld hl, (cur_addr)
+	ld hl, (ix + console.cur_addr)
 	inc h
 	ld c, 7
 
 .letter_loop:
 	push bc
 	ld a, (de)
-.rot_setter:
-	ld b, 0
+	ld b, (ix + console.rotation)
 	inc b
 	ld c, 0
 1
@@ -153,23 +153,22 @@ print_letter:
 	inc a
 
 .update_position:
-	ld hl, cur_addr
 	ld c, a
-	ld a, (.rot_setter + 1)
+	ld a, (ix + console.rotation)
 	add c
 	bit 7, a
 	jr z, .shift_right
-	dec (hl)
+	dec (ix + console.cur_addr)
 	add 8
 	jr .save_rotation
 .shift_right:
 	cp 8
 	jr c, .save_rotation
-	inc (hl)
+	inc (ix + console.cur_addr)
 	sub 8
 
 .save_rotation:
-	ld (.rot_setter + 1), a
+	ld (ix + console.rotation), a
 
 .exit:
 	pop hl, de, bc, af
@@ -185,16 +184,14 @@ print_string:
 	inc hl
 	cp 1
 	jr nz, 2F
-	ld a, (print_letter.rot_setter + 1)
+	ld a, (ix + console.rotation)
 	dec a
 	and 7
-	ld (print_letter.rot_setter + 1), a
+	ld (ix + console.rotation), a
 
 	cp 7
 	jr nz, print_string
-	ld a, (cur_addr)
-	dec a
-	ld (cur_addr), a
+	dec (ix + console.cur_addr)
 	jp print_string
 
 2
@@ -275,12 +272,12 @@ print_localized:
 	push de
 	push hl
 
-	ld a, (pending_newline)
+	ld a, (ix + console.pending_newline)
 	or a
 	jr z, .locale_setter
 	call newline
 	xor a
-	ld (pending_newline), a
+	ld (ix + console.pending_newline), a
 
 .locale_setter:
 	ld e, 0
@@ -295,7 +292,7 @@ print_localized:
 
 	call print_string
 	ld a, 1
-	ld (pending_newline), a
+	ld (ix + console.pending_newline), a
 
 	pop hl
 	pop de
