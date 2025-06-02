@@ -267,7 +267,7 @@ log_steps:
 	inc (hl)
 	ld hl, i18n.step
     ld ix, default_console
-	jp console.print_localized
+	jp console.println
 
 door_behaviour:
     ld a, (ix + object.state)

@@ -31,31 +31,8 @@ read:
 	halt
 	call read_key
 .key
-	; or a
-	; jr z, read
 	and 0b01111111
-	cp '1'
-	jr nz, .not1
 
-
-	ld ix, default_console
-
-	ld a, 0
-	call console.set_locale
-	ld hl, i18n.locale
-	call console.print_localized
-	jr .next
-
-.not1
-	cp '2':
-	jr nz, .not2
-	ld a, 1
-	call console.set_locale
-	ld hl, i18n.locale
-	call console.print_localized
-	jr .next
-
-.not2
 	cp 'Q'
 	jr nz, .notup
 	call game.move_hero_up

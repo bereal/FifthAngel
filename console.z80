@@ -80,22 +80,30 @@ set_font:
 	ld (print_letter.font_setter + 1), hl
 	ret
 
-set_locale:
-	ld (print_localized.locale_setter + 1), a
-	ret
-
 print_letter:
 	push af
 	push bc
 	push de
 	push hl
+
+	ex af, af'
+	ld a, (ix + console.pending_newline)
+	or a
+	jr z, 2F
+	ld b, a
+1
+	call newline
+	djnz 1B
+	ld (ix + console.pending_newline), 0
+2
+	ex af, af'
 	cp 0x0b
 	jr nc, .regular
 
 ;; special character
 	cp 0x0a 							;; eol
 	jr nz, .special_1
-	call newline
+	inc (ix + console.pending_newline)
 	jr .exit
 
 .special_1:
@@ -175,7 +183,7 @@ print_letter:
 	ret
 
 
-print_string:
+printf:
 	ld a, (hl)
 	or a
 	jr z, .exit
@@ -190,16 +198,16 @@ print_string:
 	ld (ix + console.rotation), a
 
 	cp 7
-	jr nz, print_string
+	jr nz, printf:
 	dec (ix + console.cur_addr)
-	jp print_string
+	jp printf:
 
 2
 	cp 2
-	jr nz, print_string
+	jr nz, printf:
 	call print_decimal
 	.2 inc hl
-	jp print_string
+	jp printf:
 
 .exit
 	ret
@@ -245,7 +253,7 @@ print_decimal:
 	call dec_char
 
 	ld hl, decimal_buf
-	call print_string
+	call printf:
 	pop hl, de, bc
 	ret
 dec_char:
@@ -267,37 +275,11 @@ dec_char_skip:
 decimal_buf:
 	defb    0,0,0,0,0,0
 
-print_localized:
-	push af
-	push de
-	push hl
-
-	ld a, (ix + console.pending_newline)
-	or a
-	jr z, .locale_setter
-	call newline
-	xor a
-	ld (ix + console.pending_newline), a
-
-.locale_setter:
-	ld e, 0
-	ld d, 0
-	add hl, de
-	add hl, de
-
-	ld a, (hl)
-	inc hl
-	ld h, (hl)
-	ld l, a
-
-	call print_string
-	ld a, 1
-	ld (ix + console.pending_newline), a
-
-	pop hl
-	pop de
-	pop af
-
+println:
+    push af, de, hl
+	call printf
+	inc (ix + console.pending_newline)
+	pop hl, de, af
 	ret
 
 	endmodule
