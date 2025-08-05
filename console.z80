@@ -283,46 +283,56 @@ println:
 	ret
 
 border_corner_top_left:
-	db 0, 0
-	dg ..xxxx..
-	dg ..x..xxx
-	dg ..x.xxxx
-	dg ..xxxx..
-	dg ...xx...
-	dg ...xx...
+	dg .xxxx...
+	dg .x..x.xx
+	dg .x.xx.xx
+	dg .xxxx...
+	dg ........
+	dg ..xx....
+	dg ..xx....
+	dg ..xx....
 
 border_corner_top_right:
-	db 0, 0
-	dg ..xxxx..
-	dg xxx..x..
-	dg xxx.xx..
-	dg ..xxxx..
-	dg ...xx...
-	dg ...xx...
+	dg ...xxxx.
+	dg xx.x..x.
+	dg xx.x.xx.
+	dg ...xxxx.
+	dg ........
+	dg ....xx..
+	dg ....xx..
+	dg ....xx..
 
 border_corner_bottom_left:
-	dg ...xx...
-	dg ...xx...
-	dg ..xxxx..
-	dg ..x..xxx
-	dg ..x.xxxx
-	dg ..xxxx..
-	db 0, 0
+	dg ..xx....
+	dg ..xx....
+	dg ..xx....
+	dg ........
+	dg .xxxx...
+	dg .x..x.xx
+	dg .x.xx.xx
+	dg .xxxx...
 
 border_corner_bottom_right:
-	dg ...xx...
-	dg ...xx...
-	dg ..xxxx..
-	dg xxx..x..
-	dg xxx.xx..
-	dg ..xxxx..
-	db 0, 0
+	dg ....xx..
+	dg ....xx..
+	dg ....xx..
+	dg ........
+	dg ...xxxx.
+	dg xx.x..x.
+	dg xx.x.xx.
+	dg ...xxxx.
 
-border_horizontal:
-	db 0, 0, 0, 0xff, 0xff, 0, 0, 0
+border_top:
+	db 0, 0xff, 0xff, 0, 0, 0, 0, 0
 
-border_vertical:
-	.8 dg ...xx...
+border_bottom:
+	db 0, 0, 0, 0, 0, 0xff, 0xff, 0
+
+border_right:
+	.8 dg ....xx..
+border_left:
+	.8 dg ..xx....
+
 draw_cell
 	push bc
 	ld b, 8
@@ -356,7 +366,7 @@ draw_border:
 	inc hl
 	push bc
 1
-	ld de, border_horizontal
+	ld de, border_top
 	push hl
 	call draw_cell
 	pop hl
@@ -368,7 +378,7 @@ draw_border:
 	correct_down_line h, l
 
 2
-	ld de, border_vertical
+	ld de, border_right
 	call draw_cell
 	correct_down_line h, l
 	dec c
@@ -382,7 +392,7 @@ draw_border:
 	pop hl
 	down_row h, l
 3
-	ld de, border_vertical
+	ld de, border_left
 	call draw_cell
 	correct_down_line h, l
 	dec c
@@ -398,7 +408,7 @@ draw_border:
 	; draw bottom horizontal line
 	inc hl
 1
-	ld de, border_horizontal
+	ld de, border_bottom
 	push hl
 	call draw_cell
 	pop hl
