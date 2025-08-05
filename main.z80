@@ -47,11 +47,16 @@ start:
 
 	ld ix, default_console
 	ld a, 0b01000100
-	ld h, 0
-	ld l, 22
+	ld h, 23
+	ld l, 0
 	ld d, 10
 	ld e, 1
 	call console.init
+
+	ld hl, 22
+	ld b, 10
+	ld c, 24
+	call console.draw_border
 
 	; xor a
 	; call console.invert_row
