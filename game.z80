@@ -149,14 +149,11 @@ move_hero_left:
     jr z, 1F
 
     ; init moving state
-    xor a
-    ld (hero.state), a
-    inc a
-    ld (hero.mirror), a
     ld a, DirectionLeft
     ld (hero.state + 1), a
 
     ld a, 1
+    ld  (hero.mirror), a
     ld e, SideStand
     jr .update
 
@@ -195,8 +192,8 @@ move_hero_down:
     ld (hero.state + 1), a
 
     xor a
-    ld (hero.state), a
     ld (hero.mirror), a
+    inc a
     ld de, FaceStand
     jr .update
 
@@ -220,7 +217,8 @@ move_hero_down:
     ld (ix + object.state), a
     ld (ix + object.mirror), d
     ld a, e
-    jp update_sprite
+    call update_sprite
+    ret
 
 move_hero_up:
     ld ix, hero
@@ -234,9 +232,9 @@ move_hero_up:
     ld (hero.state + 1), a
 
     xor a
-    ld (hero.state), a
     ld (hero.mirror), a
     ld de, BackStand
+    inc a
     jr .update
 
 1
@@ -266,8 +264,12 @@ log_steps:
 	ld hl, game.total_steps
 	inc (hl)
 	ld hl, i18n.step
+    push ix
     ld ix, default_console
-	jp console.println
+	call console.println
+    pop ix
+    ret
+
 
 door_behaviour:
     ld a, (ix + object.state)
