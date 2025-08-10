@@ -127,6 +127,18 @@ pos_to_attr_addr:
 1
     endm
 
+    macro correct_down_line X, Y
+        ld a, Y
+        add 0x20
+        ld Y, a
+        jr c, 1F
+        ld a, X
+        sub 8
+        ld h, a
+1
+    endm
+
+
 ; ix - area
 scroll_area_up:
     push hl, bc, de, af

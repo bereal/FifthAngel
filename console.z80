@@ -282,4 +282,129 @@ println:
 	pop hl, de, af
 	ret
 
+border_corner_top_left:
+	db 0, 0
+	dg ..xxxx..
+	dg ..x..xxx
+	dg ..x.xxxx
+	dg ..xxxx..
+	dg ...xx...
+	dg ...xx...
+
+border_corner_top_right:
+	db 0, 0
+	dg ..xxxx..
+	dg xxx..x..
+	dg xxx.xx..
+	dg ..xxxx..
+	dg ...xx...
+	dg ...xx...
+
+border_corner_bottom_left:
+	dg ...xx...
+	dg ...xx...
+	dg ..xxxx..
+	dg ..x..xxx
+	dg ..x.xxxx
+	dg ..xxxx..
+	db 0, 0
+
+border_corner_bottom_right:
+	dg ...xx...
+	dg ...xx...
+	dg ..xxxx..
+	dg xxx..x..
+	dg xxx.xx..
+	dg ..xxxx..
+	db 0, 0
+
+border_horizontal:
+	db 0, 0, 0, 0xff, 0xff, 0, 0, 0
+
+border_vertical:
+	.8 dg ...xx...
+draw_cell
+	push bc
+	ld b, 8
+1
+	ld a, (de)
+	ld (hl), a
+	inc h
+	inc de
+	djnz 1B
+	pop bc
+	ret
+
+; h - row
+; l - column
+; b - width
+; c - height
+draw_border:
+	call screen.pos_to_bitmap_addr
+	.2 dec b
+	.2 dec c
+
+	push bc
+	push hl
+	; draw top left corner
+	ld de, border_corner_top_left
+	push hl
+	call draw_cell
+	pop hl
+
+	; draw horizontal line
+	inc hl
+	push bc
+1
+	ld de, border_horizontal
+	push hl
+	call draw_cell
+	pop hl
+	inc hl
+	djnz 1B
+
+	ld de, border_corner_top_right
+	call draw_cell
+	correct_down_line h, l
+
+2
+	ld de, border_vertical
+	call draw_cell
+	correct_down_line h, l
+	dec c
+	jr nz, 2B
+
+	pop bc
+
+	ld de, border_corner_bottom_right
+	call draw_cell
+
+	pop hl
+	down_row h, l
+3
+	ld de, border_vertical
+	call draw_cell
+	correct_down_line h, l
+	dec c
+	jr nz, 3B
+
+
+	push hl
+	ld de, border_corner_bottom_left
+	call draw_cell
+	pop hl
+	pop bc
+
+	; draw bottom horizontal line
+	inc hl
+1
+	ld de, border_horizontal
+	push hl
+	call draw_cell
+	pop hl
+	inc hl
+	djnz 1B
+
+	ret
+
 	endmodule
