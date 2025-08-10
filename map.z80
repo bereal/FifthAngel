@@ -1,8 +1,9 @@
 	module map
+start
 
 	;; sizes in tiles
 	define MapSize 32
-	define BufferAddr 0xc000
+	define BufferAddr end_of_code
 	define Buffer_TW 12
 	define Buffer_TH 12
 	define VisibleBuffer_TW 11
@@ -26,6 +27,7 @@ buffer_lines:
 	rept Buffer_TH * TileSize, line
 		dw BufferAddr + line * BufferRowSize
 	endr
+	display "map.buffer_lines table size: ", /D, $-buffer_lines
 
 full_redraw db 0
 
@@ -39,6 +41,7 @@ screen_lines:
 	rept 8, line
 		dw 0x5000 + line * 32
 	endr
+	display "map.screen_lines table size: ", /D, $-screen_lines
 
 reset_arena:
 	ld hl, SpriteMixArena
@@ -78,9 +81,6 @@ map_coord:
 
 buffered_map_addr:
 	dw test_level
-
-test_level:
-	include "res/gen/levels/test_level.z80"
 
 	macro resolve_tile
 		ld a, (hl)
@@ -403,6 +403,7 @@ draw_object:
 
 .end
 	ret
+	display "map.draw_object size: ", /D, $-draw_object
 
 prepare_map_row:
 	ld b, Buffer_TW
@@ -730,6 +731,7 @@ copy_buffer:
 	; after this, DE' is the buffer line number
 	; (used to check dirty lines)
 
+.copy_lines
 	border 1
 	do_copy_line 0x4000, 0x58
 	next_line

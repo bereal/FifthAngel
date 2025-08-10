@@ -1,9 +1,28 @@
-	DEVICE ZXSPECTRUM48
+	DEVICE ZXSPECTRUM128
 	SLDOPT COMMENT WPMEM, LOGPOINT, ASSERT
 
 	ORG #8000
+
+	define ResourceDestinationAddr 0xc000
+
+	macro LocateResource addr
+	(addr - resources_start + ResourceDestinationAddr) 
+	endm
+
 start:
 	ld sp, 0
+
+	ld hl, resources_start
+	ld de, ResourceDestinationAddr
+	ld bc, resources_end - resources_start
+	ldir
+
+	ld hl, resources_start
+	ld de, resources_start+1
+	ld (hl), 0
+	ld bc, resources_end - resources_start - 1
+	ldir
+
 	call set_im2
 
 	; call map.draw_debug_markup
@@ -91,26 +110,47 @@ hello: db 'Press any key!', 0
 	include "screen.z80"
 	include "console.z80"
 
-	include "res/gen/tiles.z80"
+	display "modules size: ", /D, $-hello
 
-girl:
+default_console
+	console.console
+	
+	module i18n
+	;; TODO: move to the 4th page (with resources)
+	include "res/gen/i18n.z80"
+	endmodule
+end_of_code
+
+resources_start
+
+	disp 0xc000
+tiles
+	include "res/gen/tiles.z80"
+	display "tiles size:", /D, $-tiles
+
+girl
 	incbin "res/gen/sprites/girl.bin"
 
-door:
+door
 	incbin "res/gen/sprites/door.bin"
 
 ; dude:
 ; 	incbin "res/gen/sprites/mov_1.bin"
 
-font:
+font
 	include "res/gen/fonts.z80"
+	; display "font size:", /D, $-font
 
-	module i18n
-	include "res/gen/i18n.z80"
-	endmodule
+test_level:
+	include "res/gen/levels/test_level.z80"
+	; display "test_level size: ", /D, $-test_level
 
-default_console
-	console.console
+    ; display "resources size:", /D, $-tiles_start
+
+	display "total binary size:", /D, $-start
+
+	ent
+resources_end equ $
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
 	SAVESNA SNANAME,start

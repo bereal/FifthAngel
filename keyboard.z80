@@ -1,4 +1,6 @@
 	MODULE keyboard
+start
+
 @read_key:
 	ld hl, keyboard_map
 .loop
@@ -58,4 +60,5 @@ keyboard_map
 	DB 0x7F, " ", 0, "M", "N", "B"
 	DB 0
 
+	display "keyboard module size: ", /D, $-start
 	ENDMODULE
