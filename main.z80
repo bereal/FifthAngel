@@ -159,10 +159,8 @@ font
 test_level:
 	include "res/gen/levels/test_level.z80"
 	; display "test_level size: ", /D, $-test_level
-
     ; display "resources size:", /D, $-tiles_start
-
-	display "total binary size:", /D, $-start
+	; display "total binary size:", /D, $-start
 
 	ent
 resources_end equ $
