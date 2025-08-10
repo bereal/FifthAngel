@@ -12,6 +12,15 @@
 start:
 	ld sp, 0
 
+	; paper 0: ink 7: border 0
+	ld hl, 0x5800
+	ld de, 0x5801
+	ld bc, 0x2ff
+	ld (hl), 7
+	ldir
+	xor a
+	out (254), a
+
 	ld hl, resources_start
 	ld de, ResourceDestinationAddr
 	ld bc, resources_end - resources_start
