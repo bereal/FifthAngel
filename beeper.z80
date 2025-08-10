@@ -1,0 +1,36 @@
+    module beeper
+
+    macro pause duration
+        ld a, duration
+2
+        dec a
+        jr nz, 2B
+    endm
+
+play_sfx:
+.loop
+    ld a, (hl)
+    or a
+    ret z
+
+    ld b, 8
+    ld c, a
+.byte_loop
+    xor a
+    sla c
+    jr nc, 1F
+    ld a, 0b10000
+1
+    out (0xfe), a
+    
+    pause 10
+    djnz .byte_loop
+    inc hl
+    jr .loop
+    ret
+
+step_sound:
+    db 197, 155, 84, 127 ;, 149, 28, 250, 234
+    db 0
+
+    endmodule

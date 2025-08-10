@@ -195,6 +195,8 @@ move_hero_right:
     jr .update
 
 2
+    ld hl, beeper.step_sound
+    call beeper.play_sfx
     call map.move_hero_right
     call log_steps
     ld a, 1
@@ -233,6 +235,8 @@ move_hero_left:
     jr .update
 
 2
+    ld hl, beeper.step_sound
+    call beeper.play_sfx
     call map.move_hero_left
     call log_steps
     ld a, 1
@@ -273,6 +277,8 @@ move_hero_down:
     jr .update
 
 2
+    ld hl, beeper.step_sound
+    call beeper.play_sfx
     call map.move_hero_down
     call log_steps
     ld a, 1
@@ -313,6 +319,8 @@ move_hero_up:
     jr .update
 
 2
+    ld hl, beeper.step_sound
+    call beeper.play_sfx
     call map.move_hero_up
     call log_steps
     ld a, 1

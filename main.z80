@@ -111,6 +111,7 @@ objects:
 
 hello: db 'Press any key!', 0
 	include "keyboard.z80"
+	include "beeper.z80"
 	include "map.z80"
 	include "sprite.z80"
 	include "interrupts.z80"
