@@ -17,72 +17,6 @@ set_im2:
     ei
     ret
 
-; sets Z if no object found
-find_next_drawable_object:
-    ld hl, objects
-    ld b, 0xff ; best y
-    ld de, 0 ; best object
-
-.loop
-    ld c, (hl)
-    inc hl
-    ld a, (hl)
-    or a
-    jr z, .end_loop
-
-    bit 7, a
-    jr z, .next_object
-
-    push de
-    ld e, c
-    ld d, a
-    ld a, (de)
-    cp b
-    jr nc, .next_object_pop
-
-    ld b, a ; new best y
-    pop af ; discard the previous object from the stack
-    ld ix, hl
-    inc hl
-    jr .loop
-.next_object_pop
-    pop de
-.next_object
-    inc hl
-    jr .loop
-
-.end_loop
-    ld a, d
-    or a  ; set Z if no object found
-    ret z
-
-    ld a, (ix)
-    and 0x7f
-    ld (ix), a
-    ret
-
-draw_objects:
-    ld hl, objects
-
-.draw_loop
-    call find_next_drawable_object
-    jr z, .clear
-    ex de, hl
-    call map.draw_object
-    jr .draw_loop
-
-.clear
-    ld hl, objects
-.clear_loop
-    inc hl
-    ld a, (hl)
-    or a
-    ret z
-    or 0x80 ; mark as drawn
-    ld (hl), a
-    inc hl
-    jr .clear_loop
-
     macro object_loop callback
         ld hl, objects
 1
@@ -141,7 +75,7 @@ routine:
 .draw
     call map.recover_buffer
     call map.reset_arena
-    call draw_objects
+    call game.draw_objects
 
     ld a, (map.full_redraw)
     or a

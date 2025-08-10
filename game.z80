@@ -33,6 +33,71 @@ door_1 object 8, 4, 0, door, 0, door, door_behaviour
 door_2 object 14, 4, 0, door, 0, door, door_behaviour
 door_3 object 14, 22, 0, door, 0, door, door_behaviour
 
+; sets Z if no object found
+find_next_drawable_object:
+    ld hl, objects
+    ld b, 0xff ; best y
+    ld de, 0 ; best object
+
+.loop
+    ld c, (hl)
+    inc hl
+    ld a, (hl)
+    or a
+    jr z, .end_loop
+
+    bit 7, a
+    jr z, .next_object
+
+    push de
+    ld e, c
+    ld d, a
+    ld a, (de)
+    cp b
+    jr nc, .next_object_pop
+
+    ld b, a ; new best y
+    pop af ; discard the previous object from the stack
+    ld ix, hl
+    inc hl
+    jr .loop
+.next_object_pop
+    pop de
+.next_object
+    inc hl
+    jr .loop
+
+.end_loop
+    ld a, d
+    or a  ; set Z if no object found
+    ret z
+
+    ex de, hl
+    ld a, (ix)
+    and 0x7f
+    ld (ix), a
+    ret
+
+draw_objects:
+    ld hl, objects
+
+.draw_loop
+    call find_next_drawable_object
+    jr z, .clear
+    call map.draw_object
+    jr .draw_loop
+
+.clear
+    ld hl, objects
+.clear_loop
+    inc hl
+    ld a, (hl)
+    or a
+    ret z
+    or 0x80
+    ld (hl), a
+    inc hl
+    jr .clear_loop
 
 mult_table:
     rept 7, idx
