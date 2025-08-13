@@ -1,0 +1,258 @@
+
+    struct object
+y           byte
+x           byte
+mirror byte
+sprite      word
+state       word
+spritesheet word
+behaviour word
+    ends
+
+    struct object_behaviour
+tick word
+turn word
+interaction word
+predraw word
+    ends
+
+
+    module objects
+
+    define SpriteSize      49
+
+mult_table
+    rept 7, idx
+    dw idx * SpriteSize
+    endr
+
+door_behaviour object_behaviour door_tick, 0, 0, 0
+item_behaviour object_behaviour item_tick, 0, 0, 0
+
+hero object 1, 1, 0, girl, 0, girl, 0
+door_1 object 8, 4, 0, door, 0, door, door_behaviour
+door_2 object 14, 4, 0, door, 0, door, door_behaviour
+door_3 object 14, 22, 0, door, 0, door, door_behaviour
+keycard_1 object 6, 6, 0, keycard, 1, 0, item_behaviour
+
+adjacent_object dw 0
+
+; hl - object list (preserved)
+; bc - behaviour index (preserved)
+object_loop:
+1
+    push hl
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    xor a
+    or h
+    jr z, 2F
+    push bc
+    call call_behaviour
+    pop bc
+    pop hl
+    .2 inc hl
+    jr 1B
+2
+    pop hl
+    ret
+
+; hl - object
+; bc - behaviour index
+call_behaviour:
+    push hl
+    pop ix
+    ld l, (ix + object.behaviour)
+    ld h, (ix + object.behaviour + 1)
+
+    add hl, bc
+
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    bit 7, h
+    ret z
+    ld l, a
+
+    push hl
+    ret
+
+
+
+;; a current limitation: only one item can be adjacent to the hero
+item_tick:
+    ld a, (ix + object.state)
+    ld b, a
+    or a
+    ret z ; already picked up
+
+    ld a, (hero.x)
+    sub (ix + object.x)
+
+    inc a
+    cp 3
+    jr nc, .far
+
+    ld a, (hero.y)
+    sub (ix + object.y)
+    inc a
+    cp 4
+    jr nc, .far
+
+    ld a, b
+    cp 2
+    ret z
+    ld a, 2
+    ld (ix + object.state), a
+
+    ld (adjacent_object), ix
+    ld hl, i18n.keycard
+    ld ix, default_console
+	jp console.println
+
+.far
+    ld a, b
+    cp 1
+    ret z
+    ld a, 1
+    ld (ix + object.state), a
+    ret
+
+door_tick:
+    ld a, (ix + object.state)
+    or a
+    jr z, .closed
+
+    cp 0xff
+    jr z, .open
+
+    bit 7, a
+    jr z, .opening
+
+.closing
+    and 0x0f
+    or a
+    jr nz, 1F
+    ; ld hl, i18n.door_closed
+    ; call console.print_localized
+    ld (ix + object.state), 0
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+1
+    bit 0, a
+    jr z, 2F
+    dec a
+    or 0x80
+    ld (ix + object.state), a
+    ret
+
+2
+    dec a
+    or 0x80
+    ld (ix + object.state), a
+    and 0x7f
+    sra a
+    call update_sprite
+    ret
+
+.closed
+    ld a, (hero.x)
+    cp (ix + object.x)
+    ret nz
+
+    ld a, (hero.y)
+    sub (ix + object.y)
+    inc a
+    cp 3
+    ret nc
+
+.start_opening
+    ld (ix + object.state), 1
+    ret
+
+.open
+    ld a, (hero.x)
+    cp (ix + object.x)
+    jr nz, .start_closing
+
+    ld a, (ix + object.y)
+    and 0x7f
+    ld b, a
+    ld a, (hero.y)
+    sub b
+    ret z
+    cp 1
+    ret z
+    neg
+    cp 1
+    ret z
+
+.start_closing
+    ld (ix + object.state), 0x87
+    ld a, (ix)
+    and 0x7f
+    ld (ix), a ; unhide object
+    ret
+
+.opening
+    cp 5
+    jr nz, 1F
+    ; done opening, deactivate the door
+    ; ld hl, i18n.door_open
+    ; push ix
+    ; call console.print_localized
+    ; pop ix
+    ld a, (ix)
+    or 0x80
+    ld (ix), a ; hide object by moving it off-screen
+    ld (ix + object.state), 0xff
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+1
+    bit 0, a
+    jr z, 2F
+    inc a
+    ld (ix + object.state), a
+    ret
+
+2
+    inc a
+    ld (ix + object.state), a
+    sra a
+    call update_sprite
+    ret
+
+    ;; ix - character (preserved)
+;; a - sprite number
+;; corrupts: hl, de
+update_sprite:
+    ld e, a
+    ld d, 0
+    ld hl, mult_table
+    add hl, de
+    add hl, de
+    ld e, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, e
+
+    ld e, (ix + object.spritesheet)
+    ld d, (ix + object.spritesheet + 1)
+
+    add hl, de
+
+    ld (ix + object.sprite), l
+    ld (ix + object.sprite + 1), h
+
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+
+    endmodule

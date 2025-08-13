@@ -5,9 +5,9 @@ start
 	define MapSize 32
 	define BufferAddr end_of_code
 	define Buffer_TW 12
-	define Buffer_TH 12
+	define Buffer_TH 10
 	define VisibleBuffer_TW 11
-	define VisibleBuffer_TH 11
+	define VisibleBuffer_TH 9
 
 	define BufferedCellSize 3
 	define TileSize 2
@@ -31,17 +31,19 @@ buffer_lines:
 
 full_redraw db 0
 
-screen_lines:
-	rept 12, line
-		dw 0x4000 + line * 32
-	endr
-	rept 12, line
-		dw 0x4800 + line * 32
-	endr
-	rept 8, line
-		dw 0x5000 + line * 32
-	endr
-	display "map.screen_lines table size: ", /D, $-screen_lines
+
+
+; screen_lines:
+; 	rept 12, line
+; 		dw 0x4000 + line * 32
+; 	endr
+; 	rept 12, line
+; 		dw 0x4800 + line * 32
+; 	endr
+; 	rept 8, line
+; 		dw 0x5000 + line * 32
+; 	endr
+; 	display "map.screen_lines table size: ", /D, $-screen_lines
 
 reset_arena:
 	ld hl, SpriteMixArena
@@ -253,7 +255,7 @@ draw_object:
 	ret z
 
 	inc hl
-	ld b, (hl) ; y
+	ld b, (hl) ; x
 	inc hl
 
 	ld a, (hl)
@@ -325,7 +327,6 @@ draw_object:
 	jp .cell_2
 
 .cell_1_masked
-	; ld (hl), 0b11000111
 	or 0x80
 	ld (hl), a
 	inc hl
@@ -351,7 +352,6 @@ draw_object:
 	jp .cell_3
 
 .cell_2_masked
- 	; ld (hl), 0b11101101
 	or 0x80
 	ld (hl), a
 	inc hl
@@ -613,7 +613,7 @@ copy_line:
 	cp 0x7f
 	jp nz, 1F
 
-	; drawing a character cell over an empty cell
+	; drawing an object cell over an empty cell
 	ld a, 7
 	ld (de), a
 	inc de
@@ -800,18 +800,19 @@ copy_buffer:
 	next_line
 
 	do_copy_line 0x5020, 0x5a
-	next_line
+	; next_line
 
-	do_copy_line 0x5040, 0x5a
-	next_line
+	; do_copy_line 0x5040, 0x5a
+	; next_line
 
-	do_copy_line 0x5060, 0x5a
-	next_line
+	; do_copy_line 0x5060, 0x5a
+
+/* 	next_line
 
 	do_copy_line 0x5080, 0x5a
 	next_line
 
-	do_copy_line 0x50a0, 0x5a
+	do_copy_line 0x50a0, 0x5a */
 
 	call reset_full_redraw
 	ret
@@ -1037,7 +1038,7 @@ scroll_map_up:
 	ret
 
 move_hero_up:
-	ld hl, (game.hero)
+	ld hl, (objects.hero)
 	dec l
 	ret m
 
@@ -1057,9 +1058,9 @@ move_hero_up:
 	pop hl
 	ret nz
 
-	ld (game.hero), hl
+	ld (objects.hero), hl
 	ld a, l
-	cp 64 - 12
+	cp 64 - 10
 	call c, scroll_map_up
 
 	ld a, 1
@@ -1067,7 +1068,7 @@ move_hero_up:
 	ret
 
 move_hero_down:
-	ld hl, (game.hero)
+	ld hl, (objects.hero)
 	inc l
 	ld a, l
 	and 1
@@ -1090,10 +1091,10 @@ move_hero_down:
 	ret nz
 
 .aftercheck
-	ld (game.hero), hl
+	ld (objects.hero), hl
 
 	ld a, l
-	cp 12
+	cp 10
 	call nc, scroll_map_down
 
 	ld a, 1
@@ -1102,7 +1103,7 @@ move_hero_down:
 
 ; set C if moved
 move_hero_right:
-	ld hl, (game.hero)
+	ld hl, (objects.hero)
 	inc h
 
 	push hl
@@ -1139,7 +1140,7 @@ move_hero_right:
 	ld c, h
 
 	ld a, h
-	ld (game.hero.x), a
+	ld (objects.hero.x), a
 	cp 12
 
 	call nc, scroll_map_right
@@ -1150,7 +1151,7 @@ move_hero_right:
 	ret
 
 move_hero_left:
-	ld hl, (game.hero)
+	ld hl, (objects.hero)
 	ld a, h
 	or a
 	ret z
@@ -1186,7 +1187,7 @@ move_hero_left:
 	ld c, l
 
 	ld a, h
-	ld (game.hero.x), a
+	ld (objects.hero.x), a
 	cp 64 - 12
 	call c, scroll_map_left
 

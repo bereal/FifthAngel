@@ -17,37 +17,6 @@ set_im2:
     ei
     ret
 
-    macro object_loop callback
-        ld hl, objects
-1
-        push hl
-        ld a, (hl)
-        inc hl
-        ld h, (hl)
-        ld l, a
-        xor a
-        or h
-        jr z, 2F
-        call callback
-        pop hl
-        .2 inc hl
-        jr 1B
-2
-        pop hl
-    endm
-
-call_behaviour:
-    push hl
-    pop ix
-    ld l, (ix + game.object.behaviour)
-    ld h, (ix + game.object.behaviour + 1)
-    ld a, h
-    or a
-    ret z
-
-    push hl
-    ret
-
 routine:
     di
 
@@ -66,7 +35,9 @@ routine:
     push de
     push hl
 
-    object_loop call_behaviour
+    ld bc, 0
+    ld hl, game_objects
+    call objects.object_loop
 
     ld a, (dirty_screen)
     or a

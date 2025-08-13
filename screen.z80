@@ -127,6 +127,7 @@ pos_to_attr_addr:
 1
     endm
 
+    ; after inc X, correct XY if it's out of the cell row
     macro correct_down_line X, Y
         ld a, Y
         add 0x20

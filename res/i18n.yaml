@@ -7,6 +7,9 @@ door_open:
 door_closed:
   en: "Door has closed"
   ru: "Дверь закрылась"
+keycard:
+  en: Access card
+  ru: Карта доступа
 step:
   en: Made {game.total_steps} steps
   ru: Сделано {game.total_steps} шагов

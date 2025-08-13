@@ -1,4 +1,4 @@
-	DEVICE ZXSPECTRUM128
+	DEVICE ZXSPECTRUM48
 	SLDOPT COMMENT WPMEM, LOGPOINT, ASSERT
 
 	ORG #8000
@@ -47,16 +47,20 @@ start:
 
 	ld ix, default_console
 	ld a, 0b01000100
-	ld h, 23
+	ld h, 19
 	ld l, 0
 	ld d, 10
-	ld e, 1
+	ld e, 4
 	call console.init
 
 	ld hl, 22
 	ld b, 10
 	ld c, 24
 	call console.draw_border
+
+	; ld de, keycard
+	; ld hl, 0x100 + 23
+	; call inventory.draw_icon
 
 	; xor a
 	; call console.invert_row
@@ -107,11 +111,12 @@ read:
 ; .orientation db 0
 ; .sprite dw girl
 
-objects:
-	dw game.hero
-	dw game.door_1
-	dw game.door_2
-	dw game.door_3
+game_objects:
+	dw objects.hero
+	dw objects.door_1
+	dw objects.door_2
+	dw objects.door_3
+	dw objects.keycard_1
 	dw 0
 
 hello: db 'Press any key!', 0
@@ -121,6 +126,7 @@ hello: db 'Press any key!', 0
 	include "sprite.z80"
 	include "interrupts.z80"
 	include "memory.z80"
+	include "objects.z80"
 	include "game.z80"
 	include "screen.z80"
 	include "console.z80"
@@ -148,6 +154,9 @@ girl
 
 door
 	incbin "res/gen/sprites/door.bin"
+
+keycard
+	incbin "res/gen/sprites/card.bin"
 
 ; dude:
 ; 	incbin "res/gen/sprites/mov_1.bin"
