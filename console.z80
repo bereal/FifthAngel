@@ -283,55 +283,55 @@ println:
 	ret
 
 border_corner_top_left:
-	dg .xxxx...
-	dg .x..x.xx
-	dg .x.xx.xx
-	dg .xxxx...
+	dg .xxxxxx.
+	dg .xxxxxx.
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
 	dg ........
-	dg ..xx....
-	dg ..xx....
-	dg ..xx....
 
 border_corner_top_right:
-	dg ...xxxx.
-	dg xx.x..x.
-	dg xx.x.xx.
-	dg ...xxxx.
+	dg .xxxxxx.
+	dg .xxxxxx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
 	dg ........
-	dg ....xx..
-	dg ....xx..
-	dg ....xx..
 
 border_corner_bottom_left:
-	dg ..xx....
-	dg ..xx....
-	dg ..xx....
 	dg ........
-	dg .xxxx...
-	dg .x..x.xx
-	dg .x.xx.xx
-	dg .xxxx...
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xxxxxx.
+	dg .xxxxxx.
 
 border_corner_bottom_right:
-	dg ....xx..
-	dg ....xx..
-	dg ....xx..
 	dg ........
-	dg ...xxxx.
-	dg xx.x..x.
-	dg xx.x.xx.
-	dg ...xxxx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .xxxxxx.
+	dg .xxxxxx.
 
 border_top:
-	db 0, 0xff, 0xff, 0, 0, 0, 0, 0
+	db 0xff, 0xff, 0, 0, 0, 0, 0, 0
 
 border_bottom:
-	db 0, 0, 0, 0, 0, 0xff, 0xff, 0
+	db 0, 0, 0, 0, 0, 0, 0xff, 0xff
 
 border_right:
-	.8 dg ....xx..
+	.8 dg .....xx.
 border_left:
-	.8 dg ..xx....
+	.8 dg .xx.....
 
 draw_cell
 	push bc
