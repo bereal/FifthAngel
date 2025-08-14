@@ -58,9 +58,9 @@ start:
 	ld c, 24
 	call console.draw_border
 
-	; ld de, keycard
-	; ld hl, 0x100 + 23
-	; call inventory.draw_icon
+	ld de, keycard
+	ld hl, 0x100 + 23
+	call inventory.draw_icon
 
 	; xor a
 	; call console.invert_row
@@ -92,24 +92,23 @@ read:
 	jr .next
 .notright
 	cp '0'
-	jr nz, .stop
+	jr nz, .notzero
 	ld ix, default_console
 	call console.clear
+	jr .next
+.notzero
+	cp ' '
+	jr nz, .stop
+	call game.stop_hero
+ 	call objects.interact
 	jr .next
 
 .stop
 	call game.stop_hero
 
 .next
-	.2 halt
+ 	.2 halt
 	jr read
-
-; hero:
-
-; .x db 1
-; .y db 1
-; .orientation db 0
-; .sprite dw girl
 
 game_objects:
 	dw objects.hero
@@ -120,6 +119,8 @@ game_objects:
 	dw 0
 
 hello: db 'Press any key!', 0
+	include "globals.z80"
+	include "screen.z80"
 	include "keyboard.z80"
 	include "beeper.z80"
 	include "map.z80"
@@ -127,9 +128,9 @@ hello: db 'Press any key!', 0
 	include "interrupts.z80"
 	include "memory.z80"
 	include "objects.z80"
+	include "inventory.z80"
 	include "game.z80"
-	include "screen.z80"
-	include "console.z80"
+	include "console.z80"	
 
 	display "modules size: ", /D, $-hello
 

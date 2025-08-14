@@ -19,8 +19,6 @@ start
 	define BufferLinesMask BufferAddr + BufferSize
 	define RecoveryQueue BufferLinesMask + Buffer_TH * 2
 	define SpriteMixArena RecoveryQueue + 500
-	; each sprite takes up to 16 bytes when drawn, so max 10 sprites
-	define DoorsArena SpriteMixArena + 160
 
 	align 2
 buffer_lines:

@@ -35,7 +35,7 @@ routine:
     push de
     push hl
 
-    ld bc, 0
+    xor a
     ld hl, game_objects
     call objects.object_loop
 

@@ -1,0 +1,93 @@
+    module inventory
+
+
+    struct inventory_item
+icon word
+name word
+    ends
+
+keycard inventory_item 0, i18n.keycard
+
+; a - item index
+add_item:
+    ld hl, INVENTORY_START
+    ld b, a
+1
+    ld a, (hl)
+    or a    
+    jr nz, 2F
+    inc a
+2
+
+    ld (hl), b
+    ret
+
+inventory_items:
+    dw keycard
+
+; de - icon addr (using sprite format)
+; hl - screen coords (row /col)
+draw_icon:
+    call screen.pos_to_bitmap_addr
+    ex de, hl
+
+    inc hl
+
+    ld (.restore_sp+1), sp
+    ld sp, hl
+    ex de, hl
+
+    ld b, 8
+    ld a, h
+1
+    pop de    
+    ld (hl), d
+    inc h
+    djnz 1B
+
+    ld h, a
+    inc l
+    ld b, 8
+
+2
+    pop de
+    ld (hl), d
+    inc h
+    djnz 2B
+
+    dec l
+    correct_down_line h, l
+
+    ld a, h
+
+    rept 4, idx
+    pop de
+    ld (hl), e
+    inc h
+    ld (hl), d
+    if idx < 3
+        inc h
+    endif
+    endr
+
+    ld h, a
+    inc l
+
+    rept 4, idx
+    pop de
+    ld (hl), e
+    inc h
+    ld (hl), d
+    if idx < 3
+        inc h
+    endif
+    endr
+
+.restore_sp:
+    ld sp, 0
+    ret
+
+draw_inventory:
+    
+    
+    endmodule

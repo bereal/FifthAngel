@@ -118,6 +118,15 @@ stop_hero:
     ld (ix + object.state), 0
     ret
 
+    macro post_turn
+    xor a
+    ld (objects.adjacent_object+1), a
+    inc a
+    ld hl, game_objects
+    call objects.object_loop
+    endm
+
+
 move_hero_right:
     ld a, (objects.hero.state + 1)
     cp DirectionRight
@@ -159,6 +168,7 @@ move_hero_right:
     ld (ix + object.state), a
     ld a, e
     call objects.update_sprite
+    post_turn
     ret
 
 move_hero_left:
@@ -198,6 +208,10 @@ move_hero_left:
     ld (ix + object.state), a
     ld a, e
     call objects.update_sprite
+    ld a, 1
+    ld hl, game_objects
+    call objects.object_loop
+    post_turn
     ret
 
 move_hero_down:
@@ -240,6 +254,10 @@ move_hero_down:
     ld (ix + object.mirror), d
     ld a, e
     call objects.update_sprite
+    ld a, 1
+    ld hl, game_objects
+    call objects.object_loop
+    post_turn
     ret
 
 move_hero_up:
@@ -281,7 +299,9 @@ move_hero_up:
     ld (ix + object.state), a
     ld (ix + object.mirror), d
     ld a, e
-    jp objects.update_sprite
+    call objects.update_sprite
+    post_turn
+    ret
 
 log_steps:
     ret
