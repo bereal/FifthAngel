@@ -121,6 +121,8 @@ item_interaction:
     ld (ix), 0xff
     ld a, (ix + object.state+1)
     call inventory.add_item
+    ld hl, beeper.pickup_sound
+    call beeper.play_sfx
     ld a, 1
     ld (dirty_screen), a
     ret
