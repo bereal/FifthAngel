@@ -16,8 +16,8 @@ start
 	define BufferSize BufferRowSize * Buffer_TH * TileSize
 	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
 
-	define BufferLinesMask BufferAddr + BufferSize
-	define RecoveryQueue BufferLinesMask + Buffer_TH * 2
+	; define BufferLinesMask BufferAddr + BufferSize
+	define RecoveryQueue BufferAddr + BufferSize
 	define SpriteMixArena RecoveryQueue + 500
 
 	align 2
@@ -26,9 +26,6 @@ buffer_lines:
 		dw BufferAddr + line * BufferRowSize
 	endr
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
-
-full_redraw db 0
-
 
 
 ; screen_lines:
@@ -273,16 +270,18 @@ draw_object:
 	call coord_to_addr ; hl - buffer addr
 	jp m, .end
 
-	push hl
-	dec bc
-	ld hl, BufferLinesMask
-	add hl, bc
-	ld (hl), 1
-	rept 3
-		inc hl
-		ld (hl), 1
-	endr
-	pop hl
+	; push hl
+	; dec bc
+
+	; ld hl, BufferLinesMask
+	; add hl, bc
+	; ld (hl), 1
+
+	; rept 3
+	; 	inc hl
+	; 	ld (hl), 1
+	; endr
+	; pop hl
 
 	call save_tile
 
@@ -543,9 +542,9 @@ scroll_buffer_up:
 	ei
 	ret
 
-@redraw_map:
+redraw_map:
 	di
-	call set_full_redraw
+;	call set_full_redraw
 	ld hl, (buffered_map_addr)
 	ld de, BufferAddr
 	ld b, Buffer_TH
@@ -566,30 +565,29 @@ scroll_buffer_up:
 	ei
 	ret
 
-reset_full_redraw:
-	ld hl, full_redraw
-	ld (hl), 0
-	ld hl, 0x79cb ; CB 79 = bit 7, c
-	ld (copy_line.check_dirty), hl
-	ld hl, BufferLinesMask
-	ld de, BufferLinesMask + 1
-	ld (hl), 0
-	ld bc, Buffer_TH * 2 - 1
-	ldir
-	ret
+; reset_full_redraw:
+; 	ld hl, full_redraw
+; 	ld (hl), 0
+; 	ld hl, 0x79cb ; CB 79 = bit 7, c
+; 	ld (copy_line.check_dirty), hl
+; 	ld hl, BufferLinesMask
+; 	ld de, BufferLinesMask + 1
+; 	ld (hl), 0
+; 	ld bc, Buffer_TH * 2 - 1
+; 	ldir
+; 	ret
 
-set_full_redraw:
-	ld hl, full_redraw
-	ld (hl), 1
-	ld hl, 0
-	ld (copy_line.check_dirty), hl
-	ld hl, BufferLinesMask
-	ld de, BufferLinesMask + 1
-	ld (hl), 1
-	ld bc, Buffer_TH * 2 - 1
-	ldir
-	ret
-
+; set_full_redraw:
+; 	ld hl, full_redraw
+; 	ld (hl), 1
+; 	ld hl, 0
+; 	ld (copy_line.check_dirty), hl
+; 	ld hl, BufferLinesMask
+; 	ld de, BufferLinesMask + 1
+; 	ld (hl), 1
+; 	ld bc, Buffer_TH * 2 - 1
+; 	ldir
+; 	ret
 
 ;; hl - buffer address (advanced to the end of the line)
 ;; de - attr address (advanced)
@@ -623,11 +621,11 @@ copy_line:
 	or a
 	jr z, .skipdraw
 
-	ld a, c
-.check_dirty
-	nop
-	nop
-	jr z, .skipdraw
+	; ld a, c
+; .check_dirty
+; 	nop
+; 	nop
+; 	jr z, .skipdraw
 
 .draw_cell
 	ld a, (hl)
@@ -671,22 +669,22 @@ copy_line:
 
 	macro do_copy_line bitmap_row, attr_high_byte
 		exx
-		ld hl, BufferLinesMask
-		add hl, de
-		ld a, (hl)
+		; ld hl, BufferLinesMask
+		; add hl, de
+		; ld a, (hl)
 		ld hl, bitmap_row
 		inc de
 		exx
-		or a
-		jr z, 1F
+		; or a
+		; jr z, 1F
 
 		ld de, attr_high_byte * 0x100 + low(bitmap_row)
 		call copy_line
-		jr 2F
-1
-		ld bc, BufferRowSize - 6
-		add hl, bc
-2
+		; jr 2F
+; 1
+; 		ld bc, BufferRowSize - 6
+; 		add hl, bc
+; 2
 	endm
 
 	macro next_line
@@ -695,8 +693,8 @@ copy_line:
 	endm
 
 	macro border color
-		; ld a, color
-		; out (254), a
+		ld a, color
+		out (254), a
 	endm
 
 copy_buffer:
@@ -812,7 +810,7 @@ copy_buffer:
 
 	do_copy_line 0x50a0, 0x5a */
 
-	call reset_full_redraw
+	; call reset_full_redraw
 	ret
 
 
@@ -915,7 +913,6 @@ recover_buffer:
 	ld (recovery_queue_tail), hl
 	xor a
 	ld (recovery_queue_size), a
-
 	ret
 
 scroll_map_right:
@@ -946,7 +943,7 @@ scroll_map_right:
 	ld (visible_offset.column), a
 	ld (dirty_screen), a
 
-	call set_full_redraw
+	;call set_full_redraw
 	ret
 
 scroll_map_left:
@@ -976,7 +973,7 @@ scroll_map_left:
 	inc a
 	ld (dirty_screen), a
 
-	call set_full_redraw
+	;call set_full_redraw
 	ret
 
 scroll_map_down:
@@ -1005,7 +1002,7 @@ scroll_map_down:
 	ld (visible_offset.row), a
 	ld (dirty_screen), a
 
-	call set_full_redraw
+	;call set_full_redraw
 	ret
 
 scroll_map_up:
@@ -1032,7 +1029,7 @@ scroll_map_up:
 	inc a
 	ld (dirty_screen), a
 
-	call set_full_redraw
+	;call set_full_redraw
 	ret
 
 move_hero_up:

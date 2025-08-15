@@ -48,18 +48,17 @@ routine:
     call map.reset_arena
     call game.draw_objects
 
-    ld a, (map.full_redraw)
-    or a
-    jr z, 2F
+;     ld a, (map.full_redraw)
+;     or a
+;     jr z, 2F
 
-    xor a
-    ld bc, 0x3ff
-1
-    dec bc
-    cp b
-    jr nz, 1B
-
-2
+;     xor a
+;     ld bc, 0x3ff
+; 1
+;     dec bc
+;     cp b
+;     jr nz, 1B
+; 2
 
     ; ld a, 1
     ; out (254), a
@@ -68,7 +67,7 @@ routine:
     xor a
     ld (dirty_screen), a
 
-    call map.reset_full_redraw
+    ;call map.reset_full_redraw
 
 .skip_map_redraw:
     ; ld a, 0

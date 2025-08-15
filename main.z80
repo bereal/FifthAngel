@@ -35,7 +35,7 @@ start:
 	call set_im2
 
 	; call map.draw_debug_markup
-	call redraw_map
+	call map.redraw_map
 	; halt
 	; ld a, 1
 	; out (254), a
@@ -107,7 +107,7 @@ read:
 	call game.stop_hero
 
 .next
- 	.2 halt
+ 	halt
 	jr read
 
 game_objects:
