@@ -22,8 +22,10 @@ mirror_table:
 	db 0x7, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7, 0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7
 	db 0xf, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef, 0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
 
+
 ; hl - sprite bitmap
 mirror_sprite:
+	push bc
 	push hl
 	ld (.restore_sp+1), sp
 	ld a, (hl)
@@ -33,21 +35,47 @@ mirror_sprite:
 	ld sp, hl
 	ld h, high(mirror_table)
 
-	rept 24
-		pop de
+	ld bc, 0x802
 
-		ld l, d
-		ld d, (hl)
-		ld l, e
-		ld e, (hl)
+1
+	inc sp
+2
+	pop de
+	ld l, d
+	ld d, (hl)
+	ld l, e
+	ld e, (hl)
+	push de
+	pop de
+	djnz 2B
+	dec c
+	jr z, .low_half
+	ld b, 8
+	jr 1B
 
-		push de
-		pop de
-	endr
+.low_half
+	ld bc, 0x402
+
+3
+	inc sp
+4
+	pop de
+	ld l, d
+	ld d, (hl)
+	ld l, e
+	ld e, (hl)
+	push de
+	pop de
+	djnz 4B
+	dec c
+	jr z, .restore_sp
+	ld b, 4
+	jr 3B
 
 .restore_sp
 	ld sp, 0
 	pop hl
+	pop bc
 	ret
 
 ; hl - sprite bitmap

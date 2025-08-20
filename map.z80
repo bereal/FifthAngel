@@ -312,8 +312,8 @@ draw_object:
 	ld (.shift_buffer_cell_3+1), hl
 	exx
 .end_setup_mirror
-
-	ld a, (hl)
+	inc de
+	ld a, (hl) ; cell busy?
 	and 0x7f
 	jr nz, .cell_1_masked
 
@@ -338,6 +338,7 @@ draw_object:
 	ld bc, 0
 	add hl, bc
 
+	inc de
 	ld a, (hl)
 	and 0x7f
 	jr nz, .cell_2_masked
@@ -362,6 +363,7 @@ draw_object:
 	ld bc, 0
 	add hl, bc
 
+	inc de
 	ld a, (hl)
 	and 0x7f
 	jp nz, .skip_cell_3
@@ -388,6 +390,7 @@ draw_object:
 	ld bc, 0
 	add hl, bc
 
+	inc de
 	ld a, (hl)
 	and 0x7f
 	jr nz, .end
@@ -434,7 +437,6 @@ prepare_map_column:
 	ld bc, TileRowSize * (Buffer_TW - 1)
 	add hl, bc
 	ex de, hl
-
 
 	pop hl
 	ld bc, MapSize

@@ -115,7 +115,7 @@ game_objects:
 	dw objects.door_1
 	dw objects.door_2
 	dw objects.door_3
-	dw objects.keycard_1
+	dw objects.keycard_red
 	dw 0
 
 hello: db 'Press any key!', 0

@@ -25,6 +25,7 @@ add_item:
 inventory_items:
     dw keycard
 
+
 ; de - icon addr (using sprite format)
 ; hl - screen coords (row /col)
 draw_icon:
@@ -39,6 +40,7 @@ draw_icon:
 
     ld b, 8
     ld a, h
+    inc sp
 1
     pop de    
     ld (hl), d
@@ -49,6 +51,7 @@ draw_icon:
     inc l
     ld b, 8
 
+    inc sp
 2
     pop de
     ld (hl), d
@@ -60,6 +63,7 @@ draw_icon:
 
     ld a, h
 
+    inc sp
     rept 4, idx
     pop de
     ld (hl), e
@@ -73,6 +77,7 @@ draw_icon:
     ld h, a
     inc l
 
+    inc sp
     rept 4, idx
     pop de
     ld (hl), e

@@ -16,24 +16,22 @@ interaction word
 predraw word
     ends
 
-
     module objects
 
-    define SpriteSize      49
+SPRITE_SIZE equ 53
 
 mult_table
     rept 7, idx
-    dw idx * SpriteSize
+    dw idx * SPRITE_SIZE
     endr
 
 door_behaviour object_behaviour door_tick, 0, 0, 0
 item_behaviour object_behaviour 0, item_turn, item_interaction, 0
-
 hero object 1, 1, 0, girl, 0, girl, 0
 door_1 object 8, 4, 0, door, 0, door, door_behaviour
 door_2 object 14, 4, 0, door, 0, door, door_behaviour
 door_3 object 14, 22, 0, door, 0, door, door_behaviour
-keycard_1 object 6, 6, 0, keycard, 0x101, 0, item_behaviour
+keycard_red object 6, 6, 0, keycard, 0x101, 0, item_behaviour
 
 adjacent_object dw 0
 
@@ -235,7 +233,7 @@ door_tick:
     call update_sprite
     ret
 
-    ;; ix - character (preserved)
+;; ix - character (preserved)
 ;; a - sprite number
 ;; corrupts: hl, de
 update_sprite:
