@@ -28,25 +28,13 @@ buffer_lines:
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
 
 
-; screen_lines:
-; 	rept 12, line
-; 		dw 0x4000 + line * 32
-; 	endr
-; 	rept 12, line
-; 		dw 0x4800 + line * 32
-; 	endr
-; 	rept 8, line
-; 		dw 0x5000 + line * 32
-; 	endr
-; 	display "map.screen_lines table size: ", /D, $-screen_lines
-
 reset_arena:
 	ld hl, SpriteMixArena
 	call memory.init_arena
 	ret
 
 @dirty_screen:
-	db 0
+	db 0 ; WPMEM,1,w
 
 visible_offset:
 .column db 0
@@ -242,6 +230,112 @@ draw_cell_ignore_mask:
 	pop de
 	ret
 
+
+;; draw object mask and attr logic
+; +--------+--------+-----------+-----------+-----------+
+; | kind   | half   | cell busy | out: attr | out: mask |
+; +--------+--------+-----------+-----------+-----------+
+; +--------+--------+-----------+-----------+-----------+
+; | static | top    | no        | overwrite | no        |
+; +--------+--------+-----------+-----------+-----------+
+; | static | top    | yes       | overwrite | yes       |
+; +--------+--------+-----------+-----------+-----------+
+; | static | bottom | -         | overwrite | no        |
+; +--------+--------+-----------+-----------+-----------+
+; | char   | top    | no        | overwrite | no        |
+; +--------+--------+-----------+-----------+-----------+
+; | char   | top    | yes       | keep      | yes       |
+; +--------+--------+-----------+-----------+-----------+
+; | char   | bottom | no        | overwrite | on        |
+; +--------+--------+-----------+-----------+-----------+
+; | char   | bottom | yes       | skip      | skip      |
+; +--------+--------+-----------+-----------+-----------+
+
+
+; object without mirroring
+; overwrite the attrs
+draw_static_object:
+	ld c, (hl) ; y
+	ld a, 0xff
+	cp c
+	ret z
+
+	inc hl
+	ld b, (hl) ; x
+	inc hl
+
+	ld a, (hl)
+	inc hl
+
+	ex af, af'
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+	ex af, af'
+
+	ex de, hl ; de - sprite data
+	inc de    ; mirroring is irrelevant
+	call coord_to_addr
+	jp m, .end
+
+	call save_tile
+	ex de, hl ; de - buffer, hl - data
+
+	ld a, (de) ; cell busy?
+	or a
+	jr nz, .cell_1_masked
+
+	ldi  ; copy attr
+	inc bc
+	call draw_cell_ignore_mask
+	jr .cell_2
+
+.cell_1_masked
+	ldi  ; copy attr
+	inc bc
+	call draw_cell_with_mask
+
+.cell_2
+	ld a, (de)
+	or a
+	jr nz, .cell_2_masked
+
+	ldi  ; copy attr
+	inc bc
+
+	call draw_cell_ignore_mask
+	jr .low_half
+
+.cell_2_masked
+	ldi  ; copy attr
+	inc bc
+	call draw_cell_with_mask
+
+.low_half
+	ex de, hl
+	ld bc, BufferRowSize - 2 * BufferedCellSize
+	add hl, bc
+	ex de, hl
+
+	ldi
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+	inc hl
+	ex de, hl
+	ld bc, 8
+	add hl, bc
+	ldi
+	ex de, hl
+	ld (hl), e
+	inc hl
+	ld (hl), d
+
+.end
+	ret
+
 ; hl - object address
 draw_object:
 	ld c, (hl) ; y
@@ -314,17 +408,16 @@ draw_object:
 .end_setup_mirror
 	inc de
 	ld a, (hl) ; cell busy?
-	and 0x7f
+	or a
 	jr nz, .cell_1_masked
 
-	ld (hl), 0xff
+	ld (hl), 7
 	inc hl
 	ex de, hl
 	call draw_cell_ignore_mask
 	jp .cell_2
 
 .cell_1_masked
-	or 0x80
 	ld (hl), a
 	inc hl
 	ex de, hl
@@ -340,17 +433,16 @@ draw_object:
 
 	inc de
 	ld a, (hl)
-	and 0x7f
+	or a
 	jr nz, .cell_2_masked
 
-	ld (hl), 0xff
+	ld (hl), 7
 	inc hl
 	ex de, hl
 	call draw_cell_ignore_mask
 	jp .cell_3
 
 .cell_2_masked
-	or 0x80
 	ld (hl), a
 	inc hl
 	ex de, hl
@@ -365,10 +457,10 @@ draw_object:
 
 	inc de
 	ld a, (hl)
-	and 0x7f
+	or a
 	jp nz, .skip_cell_3
 
-	ld (hl), 0b10000111
+	ld (hl), 7
 	inc hl
 	ld (hl), e
 	inc hl
@@ -392,10 +484,10 @@ draw_object:
 
 	inc de
 	ld a, (hl)
-	and 0x7f
+	or a
 	jr nz, .end
 
-	ld (hl),  0b10000111
+	ld (hl), 7
 	inc hl
 	ld (hl), e
 	inc hl
@@ -607,8 +699,7 @@ copy_line:
 	inc hl
 
 	ld c, a
-	and 0x7f
-	cp 0x7f
+	cp 0xff
 	jp nz, 1F
 
 	; drawing an object cell over an empty cell
@@ -618,6 +709,7 @@ copy_line:
 	jp .draw_cell
 
 1
+	and 0x7f
 	ld (de), a
 	inc de
 	or a
@@ -900,7 +992,7 @@ recover_buffer:
 	inc hl
 
 	ld a, (hl)
-	or 0b10000000
+	; or 0b10000000
 	ld (de), a
 	inc hl
 	inc de
@@ -1045,12 +1137,13 @@ move_hero_up:
 	inc c
 	call coord_to_addr
 	ld a, (hl)
-	cp 0xff
+	and 0x80
 	jr nz, 1F
+
 	ld bc, 3
 	add hl, bc
 	ld a, (hl)
-	cp 0xff
+	and 0x80
 1
 	pop hl
 	ret nz
@@ -1067,9 +1160,6 @@ move_hero_up:
 move_hero_down:
 	ld hl, (objects.hero)
 	inc l
-	ld a, l
-	and 1
-	jr nz, .aftercheck
 
 	push hl
 	ld b, h
@@ -1081,13 +1171,12 @@ move_hero_down:
 	ld a, (hl)
 	ld bc, 3
 	add hl, bc
-	or (hl)
-	and 0x7f
-
+	ld b, (hl)
 	pop hl
+	or b
+	and 0x80
 	ret nz
 
-.aftercheck
 	ld (objects.hero), hl
 
 	ld a, l
@@ -1114,17 +1203,17 @@ move_hero_right:
 
 	ld a, c
 	and 1
-	jr z, 2F
+	jr z, 1F
 
 	ld a, (hl)
-	and 0x7f
+	or a
 	jr z, .checked
 
 2
 	ld bc, BufferRowSize
 	add hl, bc
 	ld a, (hl)
-	and 0x7f
+	or a
 
 .checked
 	pop hl
@@ -1167,14 +1256,14 @@ move_hero_left:
 	jr z, 1F
 
 	ld a, (hl)
-	and 0x7f
+	or a
 	jr z, .checked
 
 1
 	ld bc, BufferRowSize
 	add hl, bc
 	ld a, (hl)
-	and 0x7f
+	or a
 
 .checked
 	pop hl

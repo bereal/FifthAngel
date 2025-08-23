@@ -1,107 +1,41 @@
-tiles_pallette:
-	dw empty
-	dw t_1
-	dw t_2
-	dw t_3
-	dw t_4
-	dw t_5
-	dw t_6
-	dw t_7
-	dw t_8
-	dw t_9
-	dw t_10
-	dw t_11
-	dw t_12
-	dw t_13
-	dw t_14
-	dw t_15
-	dw t_16
-	dw t_17
-	dw t_18
-	dw t_19
-	dw t_20
-	dw t_21
-	dw t_22
-	dw t_23
-	dw t_24
-	dw t_25
 
-empty
-	.32 db 0
-	.4 db 7
+	module tiles
 
-t_1
-	incbin "res/tiles/01-wall-north.bin"
-	.4 db 7
-t_2
-	incbin "res/tiles/02-t-wall-north.bin"
-	.4 db 7
-t_3
-	incbin "res/tiles/03-corner-ne-1.bin"
-	.4 db 7
-t_4
-	incbin "res/tiles/04-wall-vertical.bin"
-	.4 db 7
-t_5
-	incbin "res/tiles/05-bed-head.bin"
-	.4 db 0b01000111
-t_6
-	incbin "res/tiles/06-bed-legs.bin"
-	.4 db 0b01000111
-t_7
-	incbin "res/tiles/07-bed-chair.bin"
-	.4 db 0b01000111
-t_8
-	incbin "res/tiles/08-flower-top.bin"
-	db 2, 2, 4, 4
-t_9
-	incbin "res/tiles/09-wall-north-window-1.bin"
-	.4 db 7
-t_10
-	incbin "res/tiles/10-wall-north-window-2.bin"
-	.4 db 7
-t_11
-	incbin "res/tiles/11-wall-window-3.bin"
-	.4 db 7
-t_12
-	incbin "res/tiles/12-corner-ne-lamp.bin"
-	.4 db 7
-t_13
-	incbin "res/tiles/13-wall-east-2.bin"
-	.4 db 7
-t_14
-	incbin "res/tiles/14-lamp.bin"
-	.4 db 0b01000110
-t_15
-	incbin "res/tiles/15-flower-bottom.bin"
-	.4 db 4, 4, 1, 1
-t_16
-	incbin "res/tiles/16-dining-table-1.bin"
-	.4 db 7
-t_17
-	incbin "res/tiles/17-dining-table-2.bin"
-	.4 db 7
-t_18
-	incbin "res/tiles/18-corner-nw.bin"
-	.4 db 7
-t_19
-	incbin "res/tiles/19-door.bin"
-	.4 db 7
-t_20
-	incbin "res/tiles/20-corner-ne-pot.bin"
-	.4 db 7
-t_21
-	incbin "res/tiles/21-wall-vertical-green-pot.bin"
-	.4 db 7
-t_22
-	incbin "res/tiles/22-wall-vertical-blue-pot.bin"
-	.4 db 7
-t_23
-	incbin "res/tiles/23-wall-vertical-lamp-off.bin"
-	.4 db 7
-t_24
-	incbin "res/tiles/24-barrell.bin"
-	.4 db 1
-t_25
-	incbin "res/tiles/25-corner-se-lamp.bin"
-	.4 db 7
+; hl - tile addr
+mark_tile_walkability:
+	ld bc, 6
+	add hl, bc
+	ld a, (hl)
+	or a
+	jr z, 1F
+	or 0x80
+	ld (hl), a
+1
+	ld c, 3
+	add hl, bc
+	ld a, (hl)
+	or a
+	ret z
+	or 0x80
+	ld (hl), a
+	ret
+
+
+prepare_tiles:
+	ld hl, tiles_table
+
+.loop
+	ld e, (hl)
+	inc hl
+	ld d, (hl)
+	inc hl
+	ld a, e
+	or d
+	ret z
+
+	ex de, hl
+	call mark_tile_walkability
+	ex de, hl
+	jr .loop
+
+	endmodule

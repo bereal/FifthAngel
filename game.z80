@@ -66,13 +66,14 @@ draw_objects:
 
 .draw_loop
     call find_next_drawable_object
-    jr z, .clear
-    call map.draw_object
+    jr z, .clean
+    ld a, object_behaviour.draw
+    call objects.call_behaviour
     jr .draw_loop
 
-.clear
+.clean
     ld hl, game_objects
-.clear_loop
+.clean_loop
     inc hl
     ld a, (hl)
     or a
@@ -80,7 +81,7 @@ draw_objects:
     or 0x80
     ld (hl), a
     inc hl
-    jr .clear_loop
+    jr .clean_loop
 
 stop_hero:
     ld a, (objects.hero.state)
@@ -121,7 +122,7 @@ stop_hero:
     macro post_turn
     xor a
     ld (objects.adjacent_object+1), a
-    inc a
+    ld a, object_behaviour.turn
     ld hl, game_objects
     call objects.object_loop
     endm
@@ -208,9 +209,6 @@ move_hero_left:
     ld (ix + object.state), a
     ld a, e
     call objects.update_sprite
-    ld a, 1
-    ld hl, game_objects
-    call objects.object_loop
     post_turn
     ret
 
@@ -254,9 +252,6 @@ move_hero_down:
     ld (ix + object.mirror), d
     ld a, e
     call objects.update_sprite
-    ld a, 1
-    ld hl, game_objects
-    call objects.object_loop
     post_turn
     ret
 

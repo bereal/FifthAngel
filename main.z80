@@ -6,7 +6,7 @@
 	define ResourceDestinationAddr 0xc000
 
 	macro LocateResource addr
-	(addr - resources_start + ResourceDestinationAddr) 
+	(addr - resources_start + ResourceDestinationAddr)
 	endm
 
 start:
@@ -33,6 +33,8 @@ start:
 	ldir
 
 	call set_im2
+
+	call tiles.prepare_tiles
 
 	; call map.draw_debug_markup
 	call map.redraw_map
@@ -100,7 +102,7 @@ read:
 	cp ' '
 	jr nz, .stop
 	call game.stop_hero
- 	call objects.interact
+	call objects.interact
 	jr .next
 
 .stop
@@ -125,18 +127,19 @@ hello: db 'Press any key!', 0
 	include "beeper.z80"
 	include "map.z80"
 	include "sprite.z80"
+	include "tiles.z80"
 	include "interrupts.z80"
 	include "memory.z80"
 	include "objects.z80"
 	include "inventory.z80"
 	include "game.z80"
-	include "console.z80"	
+	include "console.z80"
 
 	display "modules size: ", /D, $-hello
 
 default_console
 	console.console
-	
+
 	module i18n
 	;; TODO: move to the 4th page (with resources)
 	include "res/gen/i18n.z80"

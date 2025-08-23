@@ -12,8 +12,9 @@ behaviour word
     struct object_behaviour
 tick word
 turn word
-interaction word
+interact word
 predraw word
+draw word
     ends
 
     module objects
@@ -25,18 +26,19 @@ mult_table
     dw idx * SPRITE_SIZE
     endr
 
-door_behaviour object_behaviour door_tick, 0, 0, 0
-item_behaviour object_behaviour 0, item_turn, item_interaction, 0
-hero object 1, 1, 0, girl, 0, girl, 0
+
+hero_behaviour object_behaviour 0, 0, 0, 0, map.draw_object
+door_behaviour object_behaviour door_tick, 0, 0, 0, map.draw_static_object
+item_behaviour object_behaviour 0, item_turn, item_interaction, 0, map.draw_static_object
+hero object 1, 1, 0, girl, 0, girl, hero_behaviour
 door_1 object 8, 4, 0, door, 0, door, door_behaviour
 door_2 object 14, 4, 0, door, 0, door, door_behaviour
 door_3 object 14, 22, 0, door, 0, door, door_behaviour
 keycard_red object 6, 6, 0, keycard, 0x101, 0, item_behaviour
-
 adjacent_object dw 0
 
 ; hl - object list (preserved)
-; a - behaviour index
+; a - behaviour offset
 object_loop:
 1
     push hl
@@ -61,38 +63,43 @@ object_loop:
 
 ; hl - object
 ; a - behaviour index
+; corrupts de and bc
 call_behaviour:
-    push hl
-    pop ix
-    ld l, (ix + object.behaviour)
-    ld h, (ix + object.behaviour + 1)
-    ld c, a
-    ld a, h
-    or a
-    ret z
-    ld b, 0
-    .2 add hl, bc
-
-    ld a, (hl)
+    ld d, h
+    ld e, l
+    ld bc, object.behaviour 
+    add hl, bc
+    ld c, (hl)
     inc hl
     ld h, (hl)
     bit 7, h
     ret z
-    ld l, a
+    ld l, c
+
+    ld c, a
+    add hl, bc
+    ld c, (hl)
+    inc hl
+    ld h, (hl)
+    bit 7, h
+    ret z
+    ld l, c
 
     push hl
+    ex de, hl
     ret
+
 interact:
     ld hl, (adjacent_object)
     ld a, h
     or a
     ret z
 
-    ld a, 2
-    jp call_behaviour
-    ;; call & ret
+    ld a, object_behaviour.interact
+    jp call_behaviour ; call & ret
 
 item_turn:
+    ld ix, hl
     ld a, (ix + object.state)
     ld b, a
     or a
@@ -111,12 +118,13 @@ item_turn:
     cp 4
     ret nc
 
-    ld (adjacent_object), ix
+    ld (adjacent_object), hl
     ret
 
 item_interaction:
+    ld ix, hl
     ld (ix + object.state), 0
-    ld (ix), 0xff
+    ld (hl), 0xff
     ld a, (ix + object.state+1)
     call inventory.add_item
     ld hl, beeper.pickup_sound
@@ -126,6 +134,7 @@ item_interaction:
     ret
 
 door_tick:
+    ld ix, hl
     ld a, (ix + object.state)
     or a
     jr z, .closed
