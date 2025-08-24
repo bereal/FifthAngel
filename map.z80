@@ -1209,7 +1209,7 @@ move_hero_right:
 	or a
 	jr z, .checked
 
-2
+1
 	ld bc, BufferRowSize
 	add hl, bc
 	ld a, (hl)
@@ -1217,11 +1217,8 @@ move_hero_right:
 
 .checked
 	pop hl
-	jr z, 3F
-	ccf
-	ret
+	ret nz
 
-3
 	ld b, l
 	ld c, h
 
