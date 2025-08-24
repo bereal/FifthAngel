@@ -63,10 +63,6 @@ start:
 	ld de, keycard
 	ld hl, 0x100 + 23
 	call inventory.draw_icon
-
-	; xor a
-	; call console.invert_row
-
 read:
 	halt
 	call read_key
@@ -99,8 +95,11 @@ read:
 	call console.clear
 	jr .next
 .notzero
+	cp 'M'
+	jr z, .interact
 	cp ' '
 	jr nz, .stop
+.interact
 	call game.stop_hero
 	call objects.interact
 	jr .next

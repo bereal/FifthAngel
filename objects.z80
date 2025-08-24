@@ -28,13 +28,13 @@ mult_table
 
 
 hero_behaviour object_behaviour 0, 0, 0, 0, map.draw_object
-door_behaviour object_behaviour door_tick, 0, 0, 0, map.draw_static_object
-item_behaviour object_behaviour 0, item_turn, item_interaction, 0, map.draw_static_object
+door_behaviour object_behaviour door_tick, 0, 0, 0, draw_with_color
+item_behaviour object_behaviour 0, item_turn, item_interact, 0, draw_with_color
 hero object 1, 1, 0, girl, 0, girl, hero_behaviour
-door_1 object 8, 4, 0, door, 0, door, door_behaviour
-door_2 object 14, 4, 0, door, 0, door, door_behaviour
-door_3 object 14, 22, 0, door, 0, door, door_behaviour
-keycard_red object 6, 6, 0, keycard, 0x101, 0, item_behaviour
+door_1 object 8, 4, 0, door, 0x200, door, door_behaviour
+door_2 object 14, 4, 0, door, 0x100, door, door_behaviour
+door_3 object 14, 22, 0, door, 0x400, door, door_behaviour
+keycard_red object 6, 6, 0, keycard, 0x201, 0, item_behaviour
 adjacent_object dw 0
 
 ; hl - object list (preserved)
@@ -100,7 +100,7 @@ interact:
 
 item_turn:
     ld ix, hl
-    ld a, (ix + object.state)
+    ld a, (ix + object.state + 1)
     ld b, a
     or a
     ret z ; already picked up
@@ -121,11 +121,11 @@ item_turn:
     ld (adjacent_object), hl
     ret
 
-item_interaction:
+item_interact:
     ld ix, hl
-    ld (ix + object.state), 0
-    ld (hl), 0xff
-    ld a, (ix + object.state+1)
+    ld (ix + object.state + 1), 0
+    ld (hl), 0xff ; hide
+    ld a, (ix + object.state)
     call inventory.add_item
     ld hl, beeper.pickup_sound
     call beeper.play_sfx
@@ -241,6 +241,21 @@ door_tick:
     sra a
     call update_sprite
     ret
+
+; hl - door object
+draw_with_color:
+    push hl
+    ld bc, object.state + 1
+    add hl, bc
+    ld a, (hl)
+    .3 dec hl
+    ld b, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, b
+    call sprite.paint_sprite_monochrome
+    pop hl
+    jp map.draw_static_object
 
 ;; ix - character (preserved)
 ;; a - sprite number
