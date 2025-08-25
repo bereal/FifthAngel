@@ -13,7 +13,6 @@ behaviour word
 tick word
 turn word
 interact word
-predraw word
 draw word
     ends
 
@@ -27,12 +26,12 @@ mult_table
     endr
 
 
-hero_behaviour object_behaviour 0, 0, 0, 0, map.draw_object
-door_behaviour object_behaviour door_tick, 0, 0, 0, draw_with_color
-item_behaviour object_behaviour 0, item_turn, item_interact, 0, draw_with_color
+hero_behaviour object_behaviour 0, 0, 0, map.draw_object
+door_behaviour object_behaviour door_tick, door_turn, door_interact, draw_with_color
+item_behaviour object_behaviour 0, item_turn, item_interact, draw_with_color
 hero object 1, 1, 0, girl, 0, girl, hero_behaviour
 door_1 object 8, 4, 0, door, 0x200, door, door_behaviour
-door_2 object 14, 4, 0, door, 0x100, door, door_behaviour
+door_2 object 14, 4, 0, door, 0x500, door, door_behaviour
 door_3 object 14, 22, 0, door, 0x400, door, door_behaviour
 keycard_red object 6, 6, 0, keycard, 0x201, 0, item_behaviour
 adjacent_object dw 0
@@ -67,7 +66,7 @@ object_loop:
 call_behaviour:
     ld d, h
     ld e, l
-    ld bc, object.behaviour 
+    ld bc, object.behaviour
     add hl, bc
     ld c, (hl)
     inc hl
@@ -133,14 +132,75 @@ item_interact:
     ld (dirty_screen), a
     ret
 
+door_turn:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    jr nz, .check_closing
+
+    ld a, (hero.y) ; door.y - 1 <= y <= door.y + 1
+    sub (hl)
+    inc a
+    cp 3
+    ret nc
+
+    inc hl
+    ld a, (hero.x)
+    cp (hl)
+    ret nz
+
+    dec hl
+    ld (adjacent_object), hl
+
+.check_closing
+    cp 0xff
+    ret nz
+
+    ; -1, 0, 1
+
+    ; keep open if
+    ; -1 <= hero.y - door.y <= 1
+    ld a, (hero.y)
+    ld b, a
+    ld a, (hl)
+    and 0x7f ; the 7th bit is used for hiding
+    sub b
+    inc a
+    cp 3
+    jr nc, .start_closing
+
+    ; keep open if
+    ; -1 <= hero.x - door.x <= 1
+    inc hl
+    ld a, (hero.x)
+    sub (hl)
+    inc a
+    cp 3
+    ret c
+
+.start_closing
+    ld (ix + object.state), 0x87
+    ld a, (ix)
+    and 0x7f
+    ld (ix), a ; unhide object
+    ret
+
+door_interact:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    ret nz
+
+    ld (ix + object.state), 1
+    ret
 door_tick:
     ld ix, hl
     ld a, (ix + object.state)
     or a
-    jr z, .closed
+    ret z
 
     cp 0xff
-    jr z, .open
+    ret z
 
     bit 7, a
     jr z, .opening
@@ -171,45 +231,6 @@ door_tick:
     and 0x7f
     sra a
     call update_sprite
-    ret
-
-.closed
-    ld a, (hero.x)
-    cp (ix + object.x)
-    ret nz
-
-    ld a, (hero.y)
-    sub (ix + object.y)
-    inc a
-    cp 3
-    ret nc
-
-.start_opening
-    ld (ix + object.state), 1
-    ret
-
-.open
-    ld a, (hero.x)
-    cp (ix + object.x)
-    jr nz, .start_closing
-
-    ld a, (ix + object.y)
-    and 0x7f
-    ld b, a
-    ld a, (hero.y)
-    sub b
-    ret z
-    cp 1
-    ret z
-    neg
-    cp 1
-    ret z
-
-.start_closing
-    ld (ix + object.state), 0x87
-    ld a, (ix)
-    and 0x7f
-    ld (ix), a ; unhide object
     ret
 
 .opening

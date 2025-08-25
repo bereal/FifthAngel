@@ -48,6 +48,7 @@ paint_sprite_monochrome:
 	add hl, bc
 	ld (hl), a
 	add hl, bc
+	or 0x80
 	ld (hl), a
 	ld c, 9
 	add hl, bc

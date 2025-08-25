@@ -256,9 +256,8 @@ draw_cell_ignore_mask:
 ; overwrite the attrs
 draw_static_object:
 	ld c, (hl) ; y
-	ld a, 0xff
-	cp c
-	ret z
+	bit 7, c
+	ret nz
 
 	inc hl
 	ld b, (hl) ; x
