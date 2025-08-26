@@ -27,6 +27,17 @@ buffer_lines:
 	endr
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
 
+current_map dw 0
+current_tiles dw 0
+
+set_current_map
+	ld (current_map), hl
+	ld (buffered_map_addr), hl
+	ret
+
+set_tiles
+	ld (current_tiles), hl
+	ret
 
 reset_arena:
 	ld hl, SpriteMixArena
@@ -65,11 +76,11 @@ map_coord:
 .y db 0
 
 buffered_map_addr:
-	dw test_level
+	dw 0
 
 	macro resolve_tile
 		ld a, (hl)
-		ld hl, tiles_table
+		ld hl, (current_tiles)
 		ld c, a
 		ld b, 0
 		add hl, bc
@@ -611,7 +622,7 @@ scroll_buffer_down:
 	ld (buffered_map_addr), hl
 
 	; draw missing row on the bottom
-	ld bc, MapSize * (Buffer_TW - 1)
+	ld bc, MapSize * (Buffer_TW - 3)
 	add hl, bc
 	ld de, BufferAddr + LastTileRowOffset
 	call prepare_map_row
@@ -636,8 +647,6 @@ scroll_buffer_up:
 	ret
 
 redraw_map:
-	di
-;	call set_full_redraw
 	ld hl, (buffered_map_addr)
 	ld de, BufferAddr
 	ld b, Buffer_TH
@@ -655,7 +664,6 @@ redraw_map:
 	djnz .loop
 	ld a, 1
 	ld (dirty_screen), a
-	ei
 	ret
 
 ; reset_full_redraw:
@@ -1093,7 +1101,6 @@ scroll_map_down:
 .noredraw
 	ld (dirty_screen), a
 	ld (visible_offset.row), a
-	ld (dirty_screen), a
 
 	;call set_full_redraw
 	ret
@@ -1126,7 +1133,7 @@ scroll_map_up:
 	ret
 
 move_hero_up:
-	ld hl, (objects.hero)
+	ld hl, (game.hero)
 	dec l
 	ret m
 
@@ -1147,9 +1154,9 @@ move_hero_up:
 	pop hl
 	ret nz
 
-	ld (objects.hero), hl
+	ld (game.hero), hl
 	ld a, l
-	cp 64 - 10
+	cp 64 - VisibleBuffer_TH
 	call c, scroll_map_up
 
 	ld a, 1
@@ -1157,7 +1164,7 @@ move_hero_up:
 	ret
 
 move_hero_down:
-	ld hl, (objects.hero)
+	ld hl, (game.hero)
 	inc l
 
 	push hl
@@ -1176,10 +1183,10 @@ move_hero_down:
 	and 0x80
 	ret nz
 
-	ld (objects.hero), hl
+	ld (game.hero), hl
 
 	ld a, l
-	cp 10
+	cp VisibleBuffer_TH
 	call nc, scroll_map_down
 
 	ld a, 1
@@ -1188,7 +1195,7 @@ move_hero_down:
 
 ; set C if moved
 move_hero_right:
-	ld hl, (objects.hero)
+	ld hl, (game.hero)
 	inc h
 
 	push hl
@@ -1222,8 +1229,8 @@ move_hero_right:
 	ld c, h
 
 	ld a, h
-	ld (objects.hero.x), a
-	cp 12
+	ld (game.hero.x), a
+	cp VisibleBuffer_TW
 
 	call nc, scroll_map_right
 
@@ -1233,7 +1240,7 @@ move_hero_right:
 	ret
 
 move_hero_left:
-	ld hl, (objects.hero)
+	ld hl, (game.hero)
 	ld a, h
 	or a
 	ret z
@@ -1269,8 +1276,8 @@ move_hero_left:
 	ld c, l
 
 	ld a, h
-	ld (objects.hero.x), a
-	cp 64 - 12
+	ld (game.hero.x), a
+	cp 64 - VisibleBuffer_TW
 	call c, scroll_map_left
 
 .exit

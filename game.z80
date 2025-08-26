@@ -13,12 +13,214 @@
     define DirectionRight   0b001
     define DirectionLeft    0b011
 
-adjacent_object dw 0
+hero_behaviour object_behaviour 0, 0, 0, map.draw_object
+item_behaviour object_behaviour 0, item_turn, item_interact, draw_with_color
+door_behaviour object_behaviour door_tick, door_turn, door_interact, draw_with_color
+hero   object 1, 1, 0, res.girl, 0, res.girl, hero_behaviour
+level_objects
+    dw hero
+    .32 dw 0
+
 total_steps dw 0
+adjacent_object dw 0
+
+; Game object behaviours
+interact:
+    ld hl, (adjacent_object)
+    ld a, h
+    or a
+    ret z
+
+    ld a, object_behaviour.interact
+    jp objects.call_behaviour ; call & ret
+
+item_turn:
+    ld ix, hl
+    ld a, (ix + object.state + 1)
+    ld b, a
+    or a
+    ret z ; already picked up
+
+    ld a, (game.hero.x)
+    sub (ix + object.x)
+
+    inc a
+    cp 3
+    ret nc
+
+    ld a, (game.hero.y)
+    sub (ix + object.y)
+    inc a
+    cp 4
+    ret nc
+
+    ld (adjacent_object), hl
+    ret
+
+item_interact:
+    ld ix, hl
+    ld (ix + object.state + 1), 0
+    ld (hl), 0xff ; hide
+    ld a, (ix + object.state)
+    call inventory.add_item
+    ld hl, beeper.pickup_sound
+    call beeper.play_sfx
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+;; Game object behaviours
+door_turn:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    jr nz, .check_closing
+
+    ld a, (game.hero.y) ; door.y - 1 <= y <= door.y + 1
+    sub (hl)
+    inc a
+    cp 3
+    ret nc
+
+    inc hl
+    ld a, (game.hero.x)
+    cp (hl)
+    ret nz
+
+    dec hl
+    ld (adjacent_object), hl
+
+.check_closing
+    cp 0xff
+    ret nz
+
+    ; -1, 0, 1
+
+    ; keep open if
+    ; -1 <= hero.y - door.y <= 1
+    ld a, (game.hero.y)
+    ld b, a
+    ld a, (hl)
+    and 0x7f ; the 7th bit is used for hiding
+    sub b
+    inc a
+    cp 3
+    jr nc, .start_closing
+
+    ; keep open if
+    ; -1 <= hero.x - door.x <= 1
+    inc hl
+    ld a, (game.hero.x)
+    sub (hl)
+    inc a
+    cp 3
+    ret c
+
+.start_closing
+    ld (ix + object.state), 0x87
+    ld a, (ix)
+    and 0x7f
+    ld (ix), a ; unhide object
+    ret
+
+door_interact:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    ret nz
+
+    ld (ix + object.state), 1
+    ret
+door_tick:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    ret z
+
+    cp 0xff
+    ret z
+
+    bit 7, a
+    jr z, .opening
+
+.closing
+    and 0x0f
+    or a
+    jr nz, 1F
+    ; ld hl, i18n.door_closed
+    ; call console.print_localized
+    ld (ix + object.state), 0
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+1
+    bit 0, a
+    jr z, 2F
+    dec a
+    or 0x80
+    ld (ix + object.state), a
+    ret
+
+2
+    dec a
+    or 0x80
+    ld (ix + object.state), a
+    and 0x7f
+    sra a
+    call objects.update_sprite
+    ret
+
+.opening
+    cp 5
+    jr nz, 1F
+    ; done opening, deactivate the door
+    ; ld hl, i18n.door_open
+    ; push ix
+    ; call console.print_localized
+    ; pop ix
+    ld a, (ix)
+    or 0x80
+    ld (ix), a ; hide object by moving it off-screen
+    ld (ix + object.state), 0xff
+    ld a, 1
+    ld (dirty_screen), a
+    ret
+
+1
+    bit 0, a
+    jr z, 2F
+    inc a
+    ld (ix + object.state), a
+    ret
+
+2
+    inc a
+    ld (ix + object.state), a
+    sra a
+    call objects.update_sprite
+    ret
+
+; hl - door object
+draw_with_color:
+    push hl
+    ld bc, object.state + 1
+    add hl, bc
+    ld a, (hl)
+    .3 dec hl
+    ld b, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, b
+    call sprite.paint_sprite_monochrome
+    pop hl
+    jp map.draw_static_object
+
+
 
 ; sets Z if no object found
 find_next_drawable_object:
-    ld hl, game_objects
+    ld hl, level_objects
     ld b, 0xff ; best y
     ld de, 0 ; best object
 
@@ -60,10 +262,8 @@ find_next_drawable_object:
     and 0x7f
     ld (ix), a
     ret
-
 draw_objects:
-    ld hl, game_objects
-
+    ld hl, level_objects
 .draw_loop
     call find_next_drawable_object
     jr z, .clean
@@ -72,7 +272,7 @@ draw_objects:
     jr .draw_loop
 
 .clean
-    ld hl, game_objects
+    ld hl, level_objects
 .clean_loop
     inc hl
     ld a, (hl)
@@ -84,13 +284,13 @@ draw_objects:
     jr .clean_loop
 
 stop_hero:
-    ld a, (objects.hero.state)
+    ld a, (hero.state)
     or a
     ret z
 
     xor a
-    ld (objects.hero.state), a
-    ld a, (objects.hero.state+1)   ; direction
+    ld (hero.state), a
+    ld a, (hero.state+1)   ; direction
 
     cp DirectionFace
     jr nz, 1F
@@ -111,7 +311,7 @@ stop_hero:
     rra
 
 .update
-    ld ix, objects.hero
+    ld ix, hero
     ; ld (ix + object.mirror), 0
     ld a, e
     call objects.update_sprite
@@ -121,33 +321,33 @@ stop_hero:
 
     macro post_turn
     xor a
-    ld (objects.adjacent_object+1), a
+    ld (adjacent_object+1), a
     ld a, object_behaviour.turn
-    ld hl, game_objects
+    ld hl, level_objects
     call objects.object_loop
     endm
 
 
 move_hero_right:
-    ld a, (objects.hero.state + 1)
+    ld a, (hero.state + 1)
     cp DirectionRight
     jr z, 1F
 
     ; init moving state
     xor a
-    ld (objects.hero.state), a
+    ld (hero.state), a
     xor a
-    ld (objects.hero.mirror), a
+    ld (hero.mirror), a
 
     ld a, DirectionRight
-    ld (objects.hero.state + 1), a
+    ld (hero.state + 1), a
 
     ld a, 1
     ld e, SideStand
     jr .update
 
 1
-    ld a, (objects.hero.state)
+    ld a, (hero.state)
     and 0xf
     cp 1
     jr nz, 2F
@@ -165,7 +365,7 @@ move_hero_right:
     ld e, SideWalk2
 
 .update
-    ld ix, objects.hero
+    ld ix, hero
     ld (ix + object.state), a
     ld a, e
     call objects.update_sprite
@@ -173,21 +373,21 @@ move_hero_right:
     ret
 
 move_hero_left:
-    ld a, (objects.hero.state + 1)
+    ld a, (hero.state + 1)
     cp DirectionLeft
     jr z, 1F
 
     ; init moving state
     ld a, DirectionLeft
-    ld (objects.hero.state + 1), a
+    ld (hero.state + 1), a
 
     ld a, 1
-    ld  (objects.hero.mirror), a
+    ld  (hero.mirror), a
     ld e, SideStand
     jr .update
 
 1
-    ld a, (objects.hero.state)
+    ld a, (hero.state)
     and 0xf
     cp 1
     jr nz, 2F
@@ -205,7 +405,7 @@ move_hero_left:
     ld e, SideWalk2
 
 .update
-    ld ix, objects.hero
+    ld ix, hero
     ld (ix + object.state), a
     ld a, e
     call objects.update_sprite
@@ -213,24 +413,24 @@ move_hero_left:
     ret
 
 move_hero_down:
-    ld ix, objects.hero
+    ld ix, hero
 
-    ld a, (objects.hero.state + 1)
+    ld a, (hero.state + 1)
     cp DirectionFace
     jr z, 1F
 
     ; init moving state
     ld a, DirectionFace
-    ld (objects.hero.state + 1), a
+    ld (hero.state + 1), a
 
     xor a
-    ld (objects.hero.mirror), a
+    ld (hero.mirror), a
     inc a
     ld de, FaceStand
     jr .update
 
 1
-    ld a, (objects.hero.state)
+    ld a, (hero.state)
     and 0xf
     cp 1
     jr nz, 2F
@@ -256,24 +456,24 @@ move_hero_down:
     ret
 
 move_hero_up:
-    ld ix, objects.hero
+    ld ix, hero
 
-    ld a, (objects.hero.state + 1)
+    ld a, (hero.state + 1)
     cp DirectionBack
     jr z, 1F
 
     ; init moving state
     ld a, DirectionBack
-    ld (objects.hero.state + 1), a
+    ld (hero.state + 1), a
 
     xor a
-    ld (objects.hero.mirror), a
+    ld (hero.mirror), a
     ld de, BackStand
     inc a
     jr .update
 
 1
-    ld a, (objects.hero.state)
+    ld a, (hero.state)
     and 0xf
     cp 1
     jr nz, 2F
@@ -308,6 +508,63 @@ log_steps:
 	call console.println
     pop ix
     ret
+    
+; hl - level ref
+; d - hero x, e - hero y
+activate_level:
+    di    
+    ld (game.hero), de
 
+    ld e, (hl)
+    inc hl
+    ld d, (hl)    
+    inc hl
+    ex de, hl
+    call map.set_current_map
+    ex de, hl
+
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+    inc hl
+    ex de, hl
+    call map.set_tiles
+    ex de, hl
+    
+    ld c, 0
+    push hl
+.length
+    inc hl
+    bit 7,(hl)
+    jr z, 1F
+    inc c
+    inc c
+    inc hl
+    jr .length
+
+1
+    pop hl
+    ld de, level_objects + 2
+    ldir
+
+    call tiles.prepare_tiles
+    call map.redraw_map    
+.end
+    ei
+    ret
+    
+level_1
+    dw res.test_level
+    dw res.tiles
+    dw .door_1
+    dw .door_2
+    dw .door_3
+    dw .keycard
+    dw 0
+
+.door_1 object 8, 4, 0, res.door, 0x200, res.door, door_behaviour
+.door_2 object 14, 4, 0, res.door, 0x500, res.door, door_behaviour
+.door_3 object 14, 22, 0, res.door, 0x400, res.door, door_behaviour
+.keycard object 6, 6, 0, res.keycard, 0x201, 0, item_behaviour
 
     endmodule

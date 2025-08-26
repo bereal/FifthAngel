@@ -1,4 +1,4 @@
-tiles_table:
+levels.current_tiles:
 	dw empty_tile
 	dw tile_67
 	dw tile_66

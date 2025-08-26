@@ -36,7 +36,7 @@ routine:
     push hl
 
     xor a
-    ld hl, game_objects
+    ld hl, game.level_objects
     call objects.object_loop
 
     ld a, (dirty_screen)

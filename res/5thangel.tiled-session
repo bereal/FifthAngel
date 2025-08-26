@@ -3,11 +3,21 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "test_level.tmx",
+    "activeFile": "levels/test_level.tmx",
     "expandedProjectPaths": [
-        "."
+        ".",
+        "levels"
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
+        "levels/test_level.tmx": {
+            "scale": 1.5131,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 212.47769479875754,
+                "y": 210.16456281805566
+            }
+        },
         "test_level.tmx": {
             "scale": 2,
             "selectedLayer": 0,
@@ -29,11 +39,11 @@
     "map.tileWidth": 16,
     "map.width": 32,
     "openFiles": [
-        "tiles.tsx",
-        "test_level.tmx"
+        "levels/test_level.tmx"
     ],
     "project": "5thangel.tiled-project",
     "recentFiles": [
+        "levels/test_level.tmx",
         "tiles.tsx",
         "test_level.tmx"
     ],

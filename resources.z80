@@ -1,0 +1,43 @@
+    module res
+RESOURCES_DEST_ADDR equ 0xc000
+
+init:
+	ld hl, resources_start
+	ld de, RESOURCES_DEST_ADDR
+	ld bc, resources_end - resources_start
+	ldir
+
+	ld hl, resources_start
+	ld de, resources_start+1
+	ld (hl), 0
+	ld bc, resources_end - resources_start - 1
+	ldir
+
+    ret
+resources_start
+
+	disp 0xc000
+tiles
+	include "res/gen/tiles.z80"
+	display "tiles size:", /D, $-tiles
+
+girl
+	incbin "res/gen/sprites/girl.bin"
+
+door
+	incbin "res/gen/sprites/door.bin"
+
+keycard
+	incbin "res/gen/sprites/card.bin"
+
+
+font
+	include "res/gen/fonts.z80"
+
+test_level:
+	include "res/gen/levels/test_level.z80"
+
+	ent
+resources_end equ $
+
+    endmodule

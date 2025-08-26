@@ -3,12 +3,6 @@
 
 	ORG #8000
 
-	define ResourceDestinationAddr 0xc000
-
-	macro LocateResource addr
-	(addr - resources_start + ResourceDestinationAddr)
-	endm
-
 start:
 	ld sp, 0
 
@@ -21,30 +15,23 @@ start:
 	xor a
 	out (254), a
 
-	ld hl, resources_start
-	ld de, ResourceDestinationAddr
-	ld bc, resources_end - resources_start
-	ldir
-
-	ld hl, resources_start
-	ld de, resources_start+1
-	ld (hl), 0
-	ld bc, resources_end - resources_start - 1
-	ldir
+	call res.init
 
 	call set_im2
 
 	call tiles.prepare_tiles
 
 	; call map.draw_debug_markup
-	call map.redraw_map
+	ld de, 0x101
+	ld hl, game.level_1
+	call game.activate_level
 	; halt
 	; ld a, 1
 	; out (254), a
 	ld a, 1
 	ld (dirty_screen), a
 
-	ld hl, font
+	ld hl, res.font
 	call console.set_font
 
 	ld ix, default_console
@@ -60,9 +47,9 @@ start:
 	ld c, 24
 	call console.draw_border
 
-	ld de, keycard
-	ld hl, 0x100 + 23
-	call inventory.draw_icon
+	; ld de, keycard
+	; ld hl, 0x100 + 23
+	; call inventory.draw_icon
 read:
 	halt
 	call read_key
@@ -101,7 +88,7 @@ read:
 	jr nz, .stop
 .interact
 	call game.stop_hero
-	call objects.interact
+	call game.interact
 	jr .next
 
 .stop
@@ -111,15 +98,7 @@ read:
  	halt
 	jr read
 
-game_objects:
-	dw objects.hero
-	dw objects.door_1
-	dw objects.door_2
-	dw objects.door_3
-	dw objects.keycard_red
-	dw 0
-
-hello: db 'Press any key!', 0
+modules
 	include "globals.z80"
 	include "screen.z80"
 	include "keyboard.z80"
@@ -134,7 +113,7 @@ hello: db 'Press any key!', 0
 	include "game.z80"
 	include "console.z80"
 
-	display "modules size: ", /D, $-hello
+	display "modules size: ", /D, $-modules
 
 default_console
 	console.console
@@ -143,39 +122,11 @@ default_console
 	;; TODO: move to the 4th page (with resources)
 	include "res/gen/i18n.z80"
 	endmodule
+
 end_of_code
 
-resources_start
+	include "resources.z80"
 
-	disp 0xc000
-tiles
-	include "res/gen/tiles.z80"
-	display "tiles size:", /D, $-tiles
-
-girl
-	incbin "res/gen/sprites/girl.bin"
-
-door
-	incbin "res/gen/sprites/door.bin"
-
-keycard
-	incbin "res/gen/sprites/card.bin"
-
-; dude:
-; 	incbin "res/gen/sprites/mov_1.bin"
-
-font
-	include "res/gen/fonts.z80"
-	; display "font size:", /D, $-font
-
-test_level:
-	include "res/gen/levels/test_level.z80"
-	; display "test_level size: ", /D, $-test_level
-    ; display "resources size:", /D, $-tiles_start
-	; display "total binary size:", /D, $-start
-
-	ent
-resources_end equ $
 end:
 	SAVETAP TAPNAME,CODE,"angel5",start,end-start
 	SAVESNA SNANAME,start

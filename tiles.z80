@@ -22,15 +22,14 @@ mark_tile_walkability:
 
 
 prepare_tiles:
-	ld hl, tiles_table
+	ld hl, (map.current_tiles)
 
 .loop
 	ld e, (hl)
 	inc hl
 	ld d, (hl)
 	inc hl
-	ld a, e
-	or d
+	bit 7, d
 	ret z
 
 	ex de, hl

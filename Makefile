@@ -45,6 +45,6 @@ $(TAP): loader.bas $(shell find . -name \*.z80) $(SPRITE_BIN) $(LEVELS_GEN) $(GE
 #	zxtools pack-font font.yaml -o $@
 
 clean:
-	rm -f $(TAP)
+	rm -f $(TAP) $(SNA)
 
 .PHONY: all clean install-tools
