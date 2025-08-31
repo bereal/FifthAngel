@@ -1,25 +1,71 @@
 
 	module tiles
 
-; hl - tile addr
-mark_tile_walkability:
-	ld bc, 6
-	add hl, bc
+detect_tile_shape:
+	push de
+	ld e, 0
+	ld bc, 3
 	ld a, (hl)
 	or a
 	jr z, 1F
-	or 0x80
-	ld (hl), a
+	set 3, e
 1
-	ld c, 3
 	add hl, bc
 	ld a, (hl)
 	or a
-	ret z
-	or 0x80
-	ld (hl), a
+	jr z, 2F
+	set 2, e
+2
+	add hl, bc
+	ld a, (hl)
+	or a
+	jr z, 3F
+	set 1, e
+3
+	add hl, bc
+	ld a, (hl)
+	or a
+	jr z, .end
+	set 0, e
+
+.end
+	ld a, e
+	pop de
 	ret
 
+
+; hl - tile addr
+mark_tile_walkability:
+	push hl
+	call detect_tile_shape
+	pop hl
+	ld ix, hl
+
+	cp 0b1010 ; vertical on the left
+	jr nz, 1F
+
+	set 7, (hl)
+	set 7, (ix+6)
+	ret
+
+1
+	cp 0b0101 ; vertical on the right
+	jr nz, 2F
+	set 7, (ix+3)
+	add hl, bc
+	set 7, (ix+9)
+	ret
+
+2
+	bit 1, a
+	jr z, 3F
+	set 7, (ix+6)
+
+3
+	and 1
+	ret z
+	set 7, (ix+9)
+	ret
 
 prepare_tiles:
 	ld hl, (map.current_tiles)

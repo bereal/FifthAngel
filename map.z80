@@ -292,6 +292,17 @@ draw_static_object:
 	call save_tile
 	ex de, hl ; de - buffer, hl - data
 
+	; skip empty cell
+	ld a, (hl)
+	or a
+	jr nz, 1F
+	ld bc, 17
+	add hl, bc
+	.3 inc de
+	jr .cell_2
+
+1
+
 	ld a, (de) ; cell busy?
 	or a
 	jr nz, .cell_1_masked
@@ -307,6 +318,14 @@ draw_static_object:
 	call draw_cell_with_mask
 
 .cell_2
+	ld a, (hl)
+	or a
+	jr nz, 1F
+	ld bc, 17
+	add hl, bc
+	.3 inc de
+	jr .low_half
+1
 	ld a, (de)
 	or a
 	jr nz, .cell_2_masked
@@ -328,6 +347,14 @@ draw_static_object:
 	add hl, bc
 	ex de, hl
 
+	ld a, (hl)
+	or a
+	jr nz, 1F
+	ld bc, 9
+	add hl, bc
+	.3 inc de
+	jr .cell_4
+1
 	ldi
 	ex de, hl
 	ld (hl), e
@@ -337,6 +364,11 @@ draw_static_object:
 	ex de, hl
 	ld bc, 8
 	add hl, bc
+.cell_4
+	ld a, (hl)
+	or a
+	ret z
+
 	ldi
 	ex de, hl
 	ld (hl), e
@@ -998,14 +1030,8 @@ recover_buffer:
 	ld d, (hl)
 	inc hl
 
-	ld a, (hl)
-	; or 0b10000000
-	ld (de), a
-	inc hl
-	inc de
-
 	ld a, b
-	.2 ldi
+	.3 ldi
 	ld b, a
 	djnz .loop
 
@@ -1193,6 +1219,71 @@ move_hero_down:
 	ld (dirty_screen), a
 	ret
 
+; hl - buffer addr (preserved)
+get_cell_fill_mask:
+	push hl
+	push bc
+	inc hl
+	ld a, (hl)
+	inc hl
+	ld h, (hl)
+	ld l, a
+	ld bc, 0x800
+
+1
+	sla c
+	ld a, (hl)
+	or a
+	jr z, 2F
+	set 0, c
+2
+	inc hl
+	djnz 1B
+
+	ld a, c
+	pop bc
+	pop hl
+	ret
+
+can_move_sideways:
+	push bc
+	call coord_to_addr
+	pop bc
+
+	ld de, BufferRowSize
+
+	bit 0, c
+	jr nz, .between_rows
+
+	add hl, de
+	bit 7, (hl)
+	ret
+
+.between_rows
+	bit 7, (hl)
+	ret z
+
+	call get_cell_fill_mask
+	ld b, a
+	add hl, de
+	ld a, (hl)
+	or a
+	ret z
+
+	ld a, b
+	and 3
+	ret
+
+	; ld b, a
+	; call get_cell_fill_mask
+	; and 0xc0
+	; ret z
+	; and 0x80
+	; ret nz
+	; ld a, b
+	; and 1
+	; ret
+
 ; set C if moved
 move_hero_right:
 	ld hl, (game.hero)
@@ -1203,25 +1294,7 @@ move_hero_right:
 	ld c, l
 	inc b
 
-	push bc
-	call coord_to_addr
-	pop bc
-
-	ld a, c
-	and 1
-	jr z, 1F
-
-	ld a, (hl)
-	or a
-	jr z, .checked
-
-1
-	ld bc, BufferRowSize
-	add hl, bc
-	ld a, (hl)
-	or a
-
-.checked
+	call can_move_sideways
 	pop hl
 	ret nz
 
@@ -1247,28 +1320,9 @@ move_hero_left:
 	dec h
 
 	push hl
-	ld c, l
 	ld b, h
-
-	push bc
-	call coord_to_addr
-	pop bc
-
-	ld a, c
-	and 1
-	jr z, 1F
-
-	ld a, (hl)
-	or a
-	jr z, .checked
-
-1
-	ld bc, BufferRowSize
-	add hl, bc
-	ld a, (hl)
-	or a
-
-.checked
+	ld c, l
+	call can_move_sideways
 	pop hl
 	ret nz
 

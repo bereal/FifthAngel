@@ -16,6 +16,7 @@
 hero_behaviour object_behaviour 0, 0, 0, map.draw_object
 item_behaviour object_behaviour 0, item_turn, item_interact, draw_with_color
 door_behaviour object_behaviour door_tick, door_turn, door_interact, draw_with_color
+vdoor_behaviour object_behaviour door_tick, vdoor_turn, door_interact, map.draw_static_object
 hero   object 1, 1, 0, res.girl, 0, res.girl, hero_behaviour
 level_objects
     dw hero
@@ -122,6 +123,70 @@ door_turn:
     and 0x7f
     ld (ix), a ; unhide object
     ret
+vdoor_turn:
+    ld ix, hl
+    ld a, (ix + object.state)
+    or a
+    jr nz, .check_closing
+
+    ld a, (game.hero.y)
+    cp (hl)
+    ret nz
+
+    inc hl
+    ; activate if -2 <= game.hero.x - door.x <= 1
+    ld a, (game.hero.x)
+    sub (hl)
+    add 2
+    cp 4
+    ret nc
+
+    dec hl
+    ld (adjacent_object), hl
+    ret
+
+.check_closing
+    cp 0xff
+    ret nz
+
+    ; inc hl
+    ld a, (hl)
+    and 0x7f
+    ld b, a
+    ld a, (game.hero.y)
+    cp b
+    jr nz, .start_closing
+
+    ; keep closed if -2 <= hero.x - door.x <= 1
+    ; i.e. 0 <= hero.x - door.x + 2 <= 3
+    ld a, (game.hero.x)
+    inc hl
+    sub (hl)
+    add 2
+    cp 4
+    ret c
+
+.start_closing
+    ld (ix + object.state), 0x87
+    ld a, (ix)
+    and 0x7f
+    ld (ix), a ; unhide object
+    ret
+
+    ; ld a, (hl)
+    ; and 0x7f
+    ; ld b, a
+    ; ld a, (game.hero.x)
+    ; ; close if not -1 <= door.x - game.hero.x <= 1
+    ; and 0x7f
+    ; sub (hl)
+    ; inc a
+    ; jr c, .start_closing
+
+    ; inc hl
+    ; ld a, (game.hero.y)
+    ; cp
+
 
 door_interact:
     ld ix, hl
@@ -200,6 +265,7 @@ door_tick:
     sra a
     call objects.update_sprite
     ret
+
 
 ; hl - door object
 draw_with_color:
@@ -508,16 +574,16 @@ log_steps:
 	call console.println
     pop ix
     ret
-    
+
 ; hl - level ref
 ; d - hero x, e - hero y
 activate_level:
-    di    
+    di
     ld (game.hero), de
 
     ld e, (hl)
     inc hl
-    ld d, (hl)    
+    ld d, (hl)
     inc hl
     ex de, hl
     call map.set_current_map
@@ -530,7 +596,7 @@ activate_level:
     ex de, hl
     call map.set_tiles
     ex de, hl
-    
+
     ld c, 0
     push hl
 .length
@@ -544,27 +610,36 @@ activate_level:
 
 1
     pop hl
-    ld de, level_objects + 2
+    ld de, level_objects
     ldir
 
+    ex hl, de
+    ld (hl), low(hero)
+    inc hl
+    ld (hl), high(hero)
+    .2 inc hl
+    ld (hl), 0
+
     call tiles.prepare_tiles
-    call map.redraw_map    
+    call map.redraw_map
 .end
     ei
     ret
-    
+
 level_1
     dw res.test_level
     dw res.tiles
     dw .door_1
     dw .door_2
     dw .door_3
+    dw .vdoor_1
     dw .keycard
     dw 0
 
 .door_1 object 8, 4, 0, res.door, 0x200, res.door, door_behaviour
 .door_2 object 14, 4, 0, res.door, 0x500, res.door, door_behaviour
 .door_3 object 14, 22, 0, res.door, 0x400, res.door, door_behaviour
+.vdoor_1 object 6, 20, 0, res.vdoor, 0x4700, res.vdoor, vdoor_behaviour
 .keycard object 6, 6, 0, res.keycard, 0x201, 0, item_behaviour
 
     endmodule

@@ -27,6 +27,9 @@ girl
 door
 	incbin "res/gen/sprites/door.bin"
 
+vdoor
+	incbin "res/gen/sprites/vdoor.bin"
+
 keycard
 	incbin "res/gen/sprites/card.bin"
 

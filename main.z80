@@ -19,10 +19,8 @@ start:
 
 	call set_im2
 
-	call tiles.prepare_tiles
-
 	; call map.draw_debug_markup
-	ld de, 0x101
+	ld de, 0x202
 	ld hl, game.level_1
 	call game.activate_level
 	; halt
