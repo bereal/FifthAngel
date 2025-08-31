@@ -22,21 +22,48 @@ mirror_table:
 	db 0x7, 0x87, 0x47, 0xc7, 0x27, 0xa7, 0x67, 0xe7, 0x17, 0x97, 0x57, 0xd7, 0x37, 0xb7, 0x77, 0xf7
 	db 0xf, 0x8f, 0x4f, 0xcf, 0x2f, 0xaf, 0x6f, 0xef, 0x1f, 0x9f, 0x5f, 0xdf, 0x3f, 0xbf, 0x7f, 0xff
 
+SPRITE_SIZE equ 53
+
+spritesheet_table
+    rept 7, idx
+    dw idx * SPRITE_SIZE
+    endr
+
+
 ; hl - sprite
 ; de - four colors
 paint_sprite:
 	inc hl
-	ld bc, 9
+	ld bc, 17
+	ld a, (de)
+	ld (hl), a
+	add hl, bc
+	inc de
+	ld a, (de)
+	ld (hl), a
+	add hl, bc
+	inc de
+	ld c, 9
+	ld a, (de)
+	ld (hl), a
+	add hl, bc
+	inc de
+	ld a, (de)
+	ld (hl), a
+	ret
 
-	rept 4, idx
-		ld a, (de)
-		ld (hl), a
-		if idx == 4
-			inc de
-			add hl, bc
-		endif
-	endr
-
+paint_spritesheet:
+.loop
+	push bc
+	push hl
+	push de
+	call paint_sprite
+	pop de
+	pop hl
+	ld bc, SPRITE_SIZE
+	add hl, bc
+	pop bc
+	djnz .loop
 	ret
 
 ; hl - sprite

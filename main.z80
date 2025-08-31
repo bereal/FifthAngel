@@ -23,6 +23,14 @@ start:
 	ld de, 0x202
 	ld hl, game.level_1
 	call game.activate_level
+	ld hl, res.vdoor
+	ld de, vdoor_color
+	ld b, 4
+	call sprite.paint_spritesheet
+	jr 1F
+vdoor_color
+	db	0xc7, 0, 0xc7, 0
+1
 	; halt
 	; ld a, 1
 	; out (254), a

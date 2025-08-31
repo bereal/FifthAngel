@@ -18,13 +18,6 @@ draw word
 
     module objects
 
-SPRITE_SIZE equ 53
-
-mult_table
-    rept 7, idx
-    dw idx * SPRITE_SIZE
-    endr
-
 ; hl - object list (preserved)
 ; a - behaviour offset
 object_loop:
@@ -83,7 +76,7 @@ call_behaviour:
 update_sprite:
     ld e, a
     ld d, 0
-    ld hl, mult_table
+    ld hl, sprite.spritesheet_table
     add hl, de
     add hl, de
     ld e, (hl)
