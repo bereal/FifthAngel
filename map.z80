@@ -2,28 +2,25 @@
 start
 
 	;; sizes in tiles
-	define MapSize 32
-	define BufferAddr end_of_code
-	define Buffer_TW 12
-	define Buffer_TH 10
-	define VisibleBuffer_TW 11
-	define VisibleBuffer_TH 9
-
-	define BufferedCellSize 3
-	define TileSize 2
-	define TileRowSize 6
-	define BufferRowSize TileRowSize * Buffer_TW
-	define BufferSize BufferRowSize * Buffer_TH * TileSize
-	define LastTileRowOffset TileRowSize * (Buffer_TH - 1) * Buffer_TW * TileSize
-
-	; define BufferLinesMask BufferAddr + BufferSize
-	define RecoveryQueue BufferAddr + BufferSize
-	define SpriteMixArena RecoveryQueue + 500
+MAP_SIZE                  equ 32
+BUFFER_ADDR               equ end_of_code
+BUFFER_TILE_WIDTH         equ 12
+BUFFER_TILE_HEIGHT        equ 10
+VIS_BUFFER_TILE_WIDTH     equ 11
+VIS_BUFFER_TILE_HEIGHT    equ 9
+BUFFER_CELL_BYTES         equ 3
+TILE_SIZE                 equ 2
+TILE_ROW_BYTES            equ BUFFER_CELL_BYTES * TILE_SIZE
+BUFFER_ROW_SIZE           equ TILE_ROW_BYTES * BUFFER_TILE_WIDTH
+BUFFER_SIZE               equ BUFFER_ROW_SIZE * BUFFER_TILE_HEIGHT * TILE_SIZE
+LAST_TILE_ROW_OFFSET      equ TILE_ROW_BYTES * (BUFFER_TILE_HEIGHT - 1) * BUFFER_TILE_WIDTH * TILE_SIZE
+RECOVERY_QUEUE            equ BUFFER_ADDR + BUFFER_SIZE
+SPRITE_MIX_ARENA          equ RECOVERY_QUEUE + 500
 
 	align 2
 buffer_lines:
-	rept Buffer_TH * TileSize, line
-		dw BufferAddr + line * BufferRowSize
+	rept BUFFER_TILE_HEIGHT * TILE_SIZE, line
+		dw BUFFER_ADDR + line * BUFFER_ROW_SIZE
 	endr
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
 
@@ -40,7 +37,7 @@ set_tiles
 	ret
 
 reset_arena:
-	ld hl, SpriteMixArena
+	ld hl, SPRITE_MIX_ARENA
 	call memory.init_arena
 	ret
 
@@ -69,7 +66,7 @@ buffered_map_coord:
 recovery_queue_size:
 	db 0
 recovery_queue_tail:
-	dw RecoveryQueue
+	dw RECOVERY_QUEUE
 
 map_coord:
 .x db 0
@@ -95,14 +92,18 @@ buffered_map_addr:
 	macro prepare_tile
 		resolve_tile
 
-		.TileRowSize ldi
+		rept TILE_ROW_BYTES
+		ldi
+		endr
 
 		ex de, hl
-		ld bc, TileRowSize * (Buffer_TW - 1)
+		ld bc, TILE_ROW_BYTES * (BUFFER_TILE_WIDTH - 1)
 		add hl, bc
 		ex de, hl
 
-		.TileRowSize ldi
+		rept TILE_ROW_BYTES
+		ldi
+		endr
 	endm
 
 
@@ -167,7 +168,7 @@ coord_to_addr:
 draw_cell_with_mask:
 	ld (.set_sp+1), hl
 
-	ld hl, SpriteMixArena
+	ld hl, SPRITE_MIX_ARENA
 	ld bc, 8
 	call memory.alloc_arena
 
@@ -220,7 +221,7 @@ draw_cell_with_mask:
 draw_cell_ignore_mask:
 	push hl
 
-	ld hl, SpriteMixArena
+	ld hl, SPRITE_MIX_ARENA
 	ld bc, 8
 	call memory.alloc_arena
 
@@ -343,7 +344,7 @@ draw_static_object:
 
 .low_half
 	ex de, hl
-	ld bc, BufferRowSize - 2 * BufferedCellSize
+	ld bc, BUFFER_ROW_SIZE - 2 * BUFFER_CELL_BYTES
 	add hl, bc
 	ex de, hl
 
@@ -434,7 +435,7 @@ draw_object:
 	ld hl, 0x10000 - 6
 	ld (.shift_buffer_cell_2+1), hl
 	ld (.shift_buffer_cell_4+1), hl
-	ld hl, BufferRowSize
+	ld hl, BUFFER_ROW_SIZE
 	ld (.shift_buffer_cell_3+1), hl
 	exx
 	jr .end_setup_mirror
@@ -444,7 +445,7 @@ draw_object:
 	ld hl, 0
 	ld (.shift_buffer_cell_2+1), hl
 	ld (.shift_buffer_cell_4+1), hl
-	ld hl, BufferRowSize - 2 * BufferedCellSize
+	ld hl, BUFFER_ROW_SIZE - 2 * BUFFER_CELL_BYTES
 	ld (.shift_buffer_cell_3+1), hl
 	exx
 .end_setup_mirror
@@ -540,7 +541,7 @@ draw_object:
 	display "map.draw_object size: ", /D, $-draw_object
 
 prepare_map_row:
-	ld b, Buffer_TW
+	ld b, BUFFER_TILE_WIDTH
 .loop
 	push bc
 	push hl
@@ -548,7 +549,7 @@ prepare_map_row:
 	prepare_tile
 
 	ex de, hl
-	ld bc, - TileRowSize * Buffer_TW
+	ld bc, - TILE_ROW_BYTES * BUFFER_TILE_WIDTH
 	add hl, bc
 	ex de, hl
 
@@ -560,7 +561,7 @@ prepare_map_row:
 	ret
 
 prepare_map_column:
-	ld b, Buffer_TW
+	ld b, BUFFER_TILE_WIDTH
 .loop
 	push bc
 	push hl
@@ -568,12 +569,12 @@ prepare_map_column:
 	prepare_tile
 
 	ex de, hl
-	ld bc, TileRowSize * (Buffer_TW - 1)
+	ld bc, TILE_ROW_BYTES * (BUFFER_TILE_WIDTH - 1)
 	add hl, bc
 	ex de, hl
 
 	pop hl
-	ld bc, MapSize
+	ld bc, MAP_SIZE
 	add hl, bc
 	pop bc
 	djnz .loop
@@ -583,16 +584,16 @@ prepare_map_column:
 ; assume that the buffer is scrolled maximum to the right
 scroll_buffer_right:
 	di
-	ld hl, BufferAddr + TileRowSize
-	ld de, BufferAddr
+	ld hl, BUFFER_ADDR + TILE_ROW_BYTES
+	ld de, BUFFER_ADDR
 	exx
-	ld b, Buffer_TH * TileSize
+	ld b, BUFFER_TILE_HEIGHT * TILE_SIZE
 .loop
 	exx
-	ld bc, BufferRowSize - TileRowSize
+	ld bc, BUFFER_ROW_SIZE - TILE_ROW_BYTES
 	ldir
 
-	ld bc, TileRowSize
+	ld bc, TILE_ROW_BYTES
 	add hl, bc
 	ex de, hl
 	add hl, bc
@@ -605,25 +606,25 @@ scroll_buffer_right:
 	ld (buffered_map_addr), hl
 
 	; draw missing column on the right
-	ld bc, Buffer_TW - 1
+	ld bc, BUFFER_TILE_WIDTH - 1
 	add hl, bc
-	ld de, BufferAddr + BufferRowSize - TileRowSize
+	ld de, BUFFER_ADDR + BUFFER_ROW_SIZE - TILE_ROW_BYTES
 	call prepare_map_column
 	ei
 	ret
 
 scroll_buffer_left:
 	di
-	ld hl, BufferAddr + BufferRowSize - TileRowSize - 1
-	ld de, BufferAddr + BufferRowSize - 1
+	ld hl, BUFFER_ADDR + BUFFER_ROW_SIZE - TILE_ROW_BYTES - 1
+	ld de, BUFFER_ADDR + BUFFER_ROW_SIZE - 1
 	exx
-	ld b, Buffer_TH * TileSize
+	ld b, BUFFER_TILE_HEIGHT * TILE_SIZE
 
 .loop
 	exx
-	ld bc, (Buffer_TW - 1) * TileRowSize
+	ld bc, (BUFFER_TILE_WIDTH - 1) * TILE_ROW_BYTES
 	lddr
-	ld bc, TileRowSize * (2 * Buffer_TW - 1)
+	ld bc, TILE_ROW_BYTES * (2 * BUFFER_TILE_WIDTH - 1)
 	add hl, bc
 	ex de, hl
 	add hl, bc
@@ -635,7 +636,7 @@ scroll_buffer_left:
 	dec hl
 	ld (buffered_map_addr), hl
 
-	ld de, BufferAddr
+	ld de, BUFFER_ADDR
 	call prepare_map_column
 
 	ei
@@ -643,53 +644,53 @@ scroll_buffer_left:
 
 scroll_buffer_down:
 	di
-	ld hl, BufferAddr + BufferRowSize * TileSize
-	ld de, BufferAddr
-	ld bc, LastTileRowOffset
+	ld hl, BUFFER_ADDR + BUFFER_ROW_SIZE * TILE_SIZE
+	ld de, BUFFER_ADDR
+	ld bc, LAST_TILE_ROW_OFFSET
 	ldir
 
 	ld hl, (buffered_map_addr)
-	ld bc, MapSize
+	ld bc, MAP_SIZE
 	add hl, bc
 	ld (buffered_map_addr), hl
 
 	; draw missing row on the bottom
-	ld bc, MapSize * (Buffer_TW - 3)
+	ld bc, MAP_SIZE * (BUFFER_TILE_WIDTH - 3)
 	add hl, bc
-	ld de, BufferAddr + LastTileRowOffset
+	ld de, BUFFER_ADDR + LAST_TILE_ROW_OFFSET
 	call prepare_map_row
 	ei
 	ret
 
 scroll_buffer_up:
 	di
-	ld hl, BufferAddr + BufferSize - BufferRowSize * TileSize - 1
-	ld de, BufferAddr + BufferSize - 1
-	ld bc, BufferSize - BufferRowSize * TileSize
+	ld hl, BUFFER_ADDR + BUFFER_SIZE - BUFFER_ROW_SIZE * TILE_SIZE - 1
+	ld de, BUFFER_ADDR + BUFFER_SIZE - 1
+	ld bc, BUFFER_SIZE - BUFFER_ROW_SIZE * TILE_SIZE
 	lddr
 
 	ld hl, (buffered_map_addr)
-	ld bc, -MapSize
+	ld bc, -MAP_SIZE
 	add hl, bc
 	ld (buffered_map_addr), hl
 
-	ld de, BufferAddr
+	ld de, BUFFER_ADDR
 	call prepare_map_row
 	ei
 	ret
 
 redraw_map:
 	ld hl, (buffered_map_addr)
-	ld de, BufferAddr
-	ld b, Buffer_TH
+	ld de, BUFFER_ADDR
+	ld b, BUFFER_TILE_HEIGHT
 
 .loop
 	push bc
 	call prepare_map_row
-	ld bc, MapSize - Buffer_TW
+	ld bc, MAP_SIZE - BUFFER_TILE_WIDTH
 	add hl, bc
 	ex de, hl
-	ld bc, BufferRowSize
+	ld bc, BUFFER_ROW_SIZE
 	add hl, bc
 	ex de, hl
 	pop bc
@@ -821,7 +822,7 @@ copy_line:
 	endm
 
 	macro next_line
-		ld bc, (Buffer_TW - VisibleBuffer_TW) * 6
+		ld bc, (BUFFER_TILE_WIDTH - VIS_BUFFER_TILE_WIDTH) * 6
 		add hl, bc
 	endm
 
@@ -839,14 +840,14 @@ copy_buffer:
 	ld b, h
 	ld d, 0
 	ld e, l
-	ld hl, BufferAddr
+	ld hl, BUFFER_ADDR
 	.3 add hl, de
 
 	xor a
 	ld c, a
 	or b
 	jr z, 2F
-	ld de, BufferRowSize
+	ld de, BUFFER_ROW_SIZE
 	ld c, b
 
 1
@@ -965,7 +966,9 @@ save_tile:
 
 	ex de, hl
 
-	.BufferedCellSize ldi
+	rept BUFFER_CELL_BYTES
+	ldi
+	endr
 
 	ex de, hl
 	ld (hl), e
@@ -974,9 +977,11 @@ save_tile:
 	inc hl
 	ex de, hl
 
-	.BufferedCellSize ldi
+	rept BUFFER_CELL_BYTES
+	ldi
+	endr
 
-	ld bc, BufferRowSize - 2 * BufferedCellSize
+	ld bc, BUFFER_ROW_SIZE - 2 * BUFFER_CELL_BYTES
 	add hl, bc
 
 	ex de, hl
@@ -986,7 +991,9 @@ save_tile:
 	inc hl
 	ex de, hl
 
-	.BufferedCellSize ldi
+	rept BUFFER_CELL_BYTES
+	ldi
+	endr
 
 	ex de, hl
 	ld (hl), e
@@ -995,7 +1002,9 @@ save_tile:
 	inc hl
 	ex de, hl
 
-	.BufferedCellSize ldi
+	rept BUFFER_CELL_BYTES
+	ldi
+	endr
 
 	ex de, hl
 	ld (recovery_queue_tail), hl
@@ -1036,7 +1045,7 @@ recover_buffer:
 	djnz .loop
 
 .cleanup
-	ld hl, RecoveryQueue
+	ld hl, RECOVERY_QUEUE
 	ld (recovery_queue_tail), hl
 	xor a
 	ld (recovery_queue_size), a
@@ -1047,7 +1056,7 @@ scroll_map_right:
 
 	ld a, (map_coord.x)
 	inc a
-	cp MapSize * 2 - VisibleBuffer_TW * 2 + 1
+	cp MAP_SIZE * 2 - VIS_BUFFER_TILE_WIDTH * 2 + 1
 	ret z
 	ld (map_coord.x), a
 
@@ -1108,7 +1117,7 @@ scroll_map_down:
 
 	ld a, (map_coord.y)
 	inc a
-	cp MapSize * 2 - VisibleBuffer_TH * 2 + 1
+	cp MAP_SIZE * 2 - VIS_BUFFER_TILE_HEIGHT * 2 + 1
 	ret z
 	ld (map_coord.y), a
 
@@ -1182,7 +1191,7 @@ move_hero_up:
 
 	ld (game.hero), hl
 	ld a, l
-	cp 64 - VisibleBuffer_TH
+	cp 64 - VIS_BUFFER_TILE_HEIGHT
 	call c, scroll_map_up
 
 	ld a, 1
@@ -1212,7 +1221,7 @@ move_hero_down:
 	ld (game.hero), hl
 
 	ld a, l
-	cp VisibleBuffer_TH
+	cp VIS_BUFFER_TILE_HEIGHT
 	call nc, scroll_map_down
 
 	ld a, 1
@@ -1250,7 +1259,7 @@ can_move_sideways:
 	call coord_to_addr
 	pop bc
 
-	ld de, BufferRowSize
+	ld de, BUFFER_ROW_SIZE
 
 	bit 0, c
 	jr nz, .between_rows
@@ -1303,7 +1312,7 @@ move_hero_right:
 
 	ld a, h
 	ld (game.hero.x), a
-	cp VisibleBuffer_TW
+	cp VIS_BUFFER_TILE_WIDTH
 
 	call nc, scroll_map_right
 
@@ -1331,7 +1340,7 @@ move_hero_left:
 
 	ld a, h
 	ld (game.hero.x), a
-	cp 64 - VisibleBuffer_TW
+	cp 64 - VIS_BUFFER_TILE_WIDTH
 	call c, scroll_map_left
 
 .exit

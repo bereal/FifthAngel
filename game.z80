@@ -1,17 +1,17 @@
     module game
 
-    define FaceStand       0
-    define FaceWalk        1
-    define BackStand       2
-    define BackWalk        3
-    define SideStand       4
-    define SideWalk1       5
-    define SideWalk2       6
+PHASE_FACE_STAND       equ 0
+PHASE_FACE_WALK        equ 1
+PHASE_BACK_STAND       equ 2
+PHASE_BACK_WALK        equ 3
+PHASE_SIDE_STAND       equ 4
+PHASE_SIDE_WALK_1      equ 5
+PHASE_SIDE_WALK_2      equ 6
 
-    define DirectionFace    0b000
-    define DirectionBack    0b010
-    define DirectionRight   0b001
-    define DirectionLeft    0b011
+DIR_FACE    equ 0b000
+DIR_BACK    equ 0b010
+DIR_RIGHT   equ 0b001
+DIR_LEFT    equ 0b011
 
 hero_behaviour object_behaviour 0, 0, 0, map.draw_object
 item_behaviour object_behaviour 0, item_turn, item_interact, draw_with_color
@@ -358,7 +358,7 @@ stop_hero:
     ld (hero.state), a
     ld a, (hero.state+1)   ; direction
 
-    cp DirectionFace
+    cp DIR_FACE
     jr nz, 1F
 
     xor a
@@ -366,14 +366,14 @@ stop_hero:
     jr .update
 
 1
-    cp DirectionBack
+    cp DIR_BACK
     jr nz, 2F
     xor a
-    ld e, BackStand
+    ld e, PHASE_BACK_STAND
     jr .update
 
 2
-    ld e, SideStand
+    ld e, PHASE_SIDE_STAND
     rra
 
 .update
@@ -396,7 +396,7 @@ stop_hero:
 
 move_hero_right:
     ld a, (hero.state + 1)
-    cp DirectionRight
+    cp DIR_RIGHT
     jr z, 1F
 
     ; init moving state
@@ -405,11 +405,11 @@ move_hero_right:
     xor a
     ld (hero.mirror), a
 
-    ld a, DirectionRight
+    ld a, DIR_RIGHT
     ld (hero.state + 1), a
 
     ld a, 1
-    ld e, SideStand
+    ld e, PHASE_SIDE_STAND
     jr .update
 
 1
@@ -419,7 +419,7 @@ move_hero_right:
     jr nz, 2F
 
     ld a, 2
-    ld e, SideWalk1
+    ld e, PHASE_SIDE_WALK_1
     jr .update
 
 2
@@ -428,7 +428,7 @@ move_hero_right:
     call map.move_hero_right
     call log_steps
     ld a, 1
-    ld e, SideWalk2
+    ld e, PHASE_SIDE_WALK_2
 
 .update
     ld ix, hero
@@ -440,16 +440,16 @@ move_hero_right:
 
 move_hero_left:
     ld a, (hero.state + 1)
-    cp DirectionLeft
+    cp DIR_LEFT
     jr z, 1F
 
     ; init moving state
-    ld a, DirectionLeft
+    ld a, DIR_LEFT
     ld (hero.state + 1), a
 
     ld a, 1
     ld  (hero.mirror), a
-    ld e, SideStand
+    ld e, PHASE_SIDE_STAND
     jr .update
 
 1
@@ -459,7 +459,7 @@ move_hero_left:
     jr nz, 2F
 
     ld a, 2
-    ld e, SideWalk1
+    ld e, PHASE_SIDE_WALK_1
     jr .update
 
 2
@@ -468,7 +468,7 @@ move_hero_left:
     call map.move_hero_left
     call log_steps
     ld a, 1
-    ld e, SideWalk2
+    ld e, PHASE_SIDE_WALK_2
 
 .update
     ld ix, hero
@@ -482,17 +482,17 @@ move_hero_down:
     ld ix, hero
 
     ld a, (hero.state + 1)
-    cp DirectionFace
+    cp DIR_FACE
     jr z, 1F
 
     ; init moving state
-    ld a, DirectionFace
+    ld a, DIR_FACE
     ld (hero.state + 1), a
 
     xor a
     ld (hero.mirror), a
     inc a
-    ld de, FaceStand
+    ld de, PHASE_FACE_STAND
     jr .update
 
 1
@@ -502,7 +502,7 @@ move_hero_down:
     jr nz, 2F
 
     ld a, 2
-    ld de, FaceWalk
+    ld de, PHASE_FACE_WALK
     jr .update
 
 2
@@ -511,7 +511,7 @@ move_hero_down:
     call map.move_hero_down
     call log_steps
     ld a, 1
-    ld de, 0x100 + FaceWalk
+    ld de, 0x100 + PHASE_FACE_WALK
 
 .update
     ld (ix + object.state), a
@@ -525,16 +525,16 @@ move_hero_up:
     ld ix, hero
 
     ld a, (hero.state + 1)
-    cp DirectionBack
+    cp DIR_BACK
     jr z, 1F
 
     ; init moving state
-    ld a, DirectionBack
+    ld a, DIR_BACK
     ld (hero.state + 1), a
 
     xor a
     ld (hero.mirror), a
-    ld de, BackStand
+    ld de, PHASE_BACK_STAND
     inc a
     jr .update
 
@@ -545,7 +545,7 @@ move_hero_up:
     jr nz, 2F
 
     ld a, 2
-    ld de, BackWalk
+    ld de, PHASE_BACK_WALK
     jr .update
 
 2
@@ -554,7 +554,7 @@ move_hero_up:
     call map.move_hero_up
     call log_steps
     ld a, 1
-    ld de, 0x100 + BackWalk
+    ld de, 0x100 + PHASE_BACK_WALK
 
 .update
     ld (ix + object.state), a
