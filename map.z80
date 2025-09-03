@@ -3,7 +3,6 @@ start
 
 	;; sizes in tiles
 MAP_SIZE                  equ 32
-BUFFER_ADDR               equ end_of_code
 BUFFER_TILE_WIDTH         equ 12
 BUFFER_TILE_HEIGHT        equ 10
 VIS_BUFFER_TILE_WIDTH     equ 11
@@ -15,7 +14,10 @@ BUFFER_ROW_SIZE           equ TILE_ROW_BYTES * BUFFER_TILE_WIDTH
 BUFFER_SIZE               equ BUFFER_ROW_SIZE * BUFFER_TILE_HEIGHT * TILE_SIZE
 LAST_TILE_ROW_OFFSET      equ TILE_ROW_BYTES * (BUFFER_TILE_HEIGHT - 1) * BUFFER_TILE_WIDTH * TILE_SIZE
 RECOVERY_QUEUE            equ BUFFER_ADDR + BUFFER_SIZE
-SPRITE_MIX_ARENA          equ RECOVERY_QUEUE + 500
+RECOVERY_QUEUE_SIZE       equ 0x100
+SPRITE_MIX_ARENA          equ RECOVERY_QUEUE + RECOVERY_QUEUE_SIZE
+SPRITE_MIX_ARENA_SIZE     equ 0x80
+HEAP_SIZE                 equ BUFFER_SIZE + RECOVERY_QUEUE_SIZE + SPRITE_MIX_ARENA_SIZE
 
 	align 2
 buffer_lines:
@@ -23,19 +25,15 @@ buffer_lines:
 		dw BUFFER_ADDR + line * BUFFER_ROW_SIZE
 	endr
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
-
-current_map dw 0
 current_tiles dw 0
 
 set_current_map
-	ld (current_map), hl
 	ld (buffered_map_addr), hl
 	ret
 
 set_tiles
 	ld (current_tiles), hl
 	ret
-
 reset_arena:
 	ld hl, SPRITE_MIX_ARENA
 	call memory.init_arena

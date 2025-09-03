@@ -37,9 +37,6 @@ keycard
 font
 	include "res/gen/fonts.z80"
 
-test_level:
-	include "res/gen/levels/test_level.z80"
-
 	ent
 resources_end equ $
 

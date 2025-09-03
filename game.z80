@@ -585,9 +585,12 @@ activate_level:
     inc hl
     ld d, (hl)
     inc hl
-    ex de, hl
+    push de
+    ld de, CURRENT_MAP
+    call dzx0_standard
+    ld hl, CURRENT_MAP
     call map.set_current_map
-    ex de, hl
+    pop hl
 
     ld e, (hl)
     inc hl
@@ -597,7 +600,7 @@ activate_level:
     call map.set_tiles
     ex de, hl
 
-    ld c, 0
+    ld bc, 0
     push hl
 .length
     inc hl
@@ -627,7 +630,10 @@ activate_level:
     ret
 
 level_1
-    dw res.test_level
+    dw level_1_metadata
+    incbin "res/gen/levels/test_level.zx0"
+
+level_1_metadata
     dw res.tiles
     dw .door_1
     dw .door_2
