@@ -91,11 +91,15 @@ read:
 	cp 'M'
 	jr z, .interact
 	cp ' '
-	jr nz, .stop
+	jr nz, .nointeract
 .interact
 	call game.stop_hero
 	call game.interact
 	jr .next
+.nointeract
+	cp 'H'
+	jr nz, .stop
+	call map.fade_out
 
 .stop
 	call game.stop_hero

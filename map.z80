@@ -1346,6 +1346,39 @@ move_hero_left:
 	ld (dirty_screen), a
 	ret
 
+fade_out:
+	ld b, 7
+.loop
+	halt
+	ld hl, 0x5800
+
+	push bc
+	ld c, VIS_BUFFER_TILE_HEIGHT * 2
+
+.vloop
+	ld b, VIS_BUFFER_TILE_WIDTH * 2
+
+.hloop
+	ld a, (hl)
+	and 7
+	jr z, .next
+
+	dec a
+	ld (hl), a
+.next
+	inc hl
+	djnz .hloop
+
+	ld de, 32 - VIS_BUFFER_TILE_WIDTH * 2
+	add hl, de
+
+	dec c
+	jr nz, .vloop
+
+	pop bc
+	djnz .loop
+	ret
+
 draw_debug_markup:
 	ld hl, 0x5800 + 22
 	ld de, 32
