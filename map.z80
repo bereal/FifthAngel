@@ -27,8 +27,29 @@ buffer_lines:
 	display "map.buffer_lines table size: ", /D, $-buffer_lines
 current_tiles dw 0
 
-set_current_map
+; hl - new map offset in half-tiles (l = y, h = x)
+set_map_coord
+	push de
+	push hl
+	ld (map_coord), hl
+	ld a, h
+	ld h, 0
+
+	.4 add hl, hl
+
+	ld de, CURRENT_MAP
+	add hl, de
+
+	ld d, 0
+	ld e, a
+	sra e
+	add hl, de
+
 	ld (buffered_map_addr), hl
+	ld hl, 0
+	ld (visible_offset), hl
+	pop hl
+	pop de
 	ret
 
 set_tiles
@@ -46,29 +67,14 @@ visible_offset:
 .column db 0
 .row db 0
 
-	align 4
-visible_buffer_bounds:
-.min.x db 0
-.max.x db 0
-.min.y db 0
-.max.y db 0
-
-visible_map_coord:
-.x db 0
-.y db 0
-
-buffered_map_coord:
-.x db 0
-.y db 0
-
 recovery_queue_size:
 	db 0
 recovery_queue_tail:
 	dw RECOVERY_QUEUE
 
 map_coord:
-.x db 0
 .y db 0
+.x db 0
 
 buffered_map_addr:
 	dw 0
@@ -110,7 +116,7 @@ buffered_map_addr:
 ;	   bc - buffer row (if not out of screen)
 ;      flag M if out of screen
 coord_to_addr:
-	ld a, (visible_buffer_bounds.min.y)
+	ld a, (map_coord.y)
 	sub c
 	ld c, a
 	ld a, (visible_offset.row)
@@ -118,6 +124,11 @@ coord_to_addr:
 	ret m
 
 	ld c, a
+
+	ld a, BUFFER_TILE_HEIGHT * 2
+	sub c
+	ret m
+
 	ld a, b
 
 	ld b, 0
@@ -134,7 +145,7 @@ coord_to_addr:
 
 	ld c, a
 
-	ld a, (visible_buffer_bounds.min.x)
+	ld a, (map_coord.x)
 	ld b, a
 	ld a, (visible_offset.column)
 	sub b
@@ -142,9 +153,13 @@ coord_to_addr:
 
 	jp m, .end
 
+	ld c, a
+	ld a, BUFFER_TILE_WIDTH * 2
+	sub c
+	jp m, .end
+
 	; hl += 3 * bc
 	ld b, 0
-	ld c, a
 	add hl, bc
 	sla c
 	add hl, bc
@@ -291,6 +306,22 @@ draw_static_object:
 	call save_tile
 	ex de, hl ; de - buffer, hl - data
 
+	bit 7, h
+	jr nz, 1F
+
+	; drawing empty sprite
+	xor a
+	ld (de), a
+	.3 inc de
+	ld (de), a
+	ld hl, BUFFER_ROW_SIZE - BUFFER_CELL_BYTES
+	add hl, de
+	ld (hl), a
+	.3 inc hl
+	ld (hl), a
+	ret
+
+1
 	; skip empty cell
 	ld a, (hl)
 	or a
@@ -1012,9 +1043,13 @@ save_tile:
 	ret
 
 recover_buffer:
+	push af
+	push bc
+	push de
+	push hl
 	ld a, (recovery_queue_size)
 	or a
-	ret z
+	jr z, .end
 
 	ld b, a
 	ld hl, (recovery_queue_tail)
@@ -1047,6 +1082,11 @@ recover_buffer:
 	ld (recovery_queue_tail), hl
 	xor a
 	ld (recovery_queue_size), a
+.end
+	pop hl
+	pop de
+	pop bc
+	pop af
 	ret
 
 scroll_map_right:
@@ -1058,13 +1098,10 @@ scroll_map_right:
 	ret z
 	ld (map_coord.x), a
 
-	ld hl, visible_buffer_bounds.min.x
-	inc (hl)
-	inc l
-	inc (hl)
-
-	ld hl, visible_map_coord.x
-	inc (hl)
+	; ld hl, visible_buffer_bounds.min.x
+	; inc (hl)
+	; inc l
+	; inc (hl)
 
 	ld a, (visible_offset.column)
 	inc a
@@ -1088,17 +1125,14 @@ scroll_map_left:
 	ret m
 	ld (map_coord.x), a
 
-	ld hl, visible_buffer_bounds.min.x
-	dec (hl)
-	inc l
-	dec (hl)
-
-	ld hl, visible_map_coord.x
-	dec (hl)
+	; ld hl, visible_buffer_bounds.min.x
+	; dec (hl)
+	; inc l
+	; dec (hl)
 
 	ld a, (visible_offset.column)
 	sub 1
-	jr nc,	.noredraw
+	jr nc, .noredraw
 	call scroll_buffer_left
 	ld a, 1
 
@@ -1119,10 +1153,8 @@ scroll_map_down:
 	ret z
 	ld (map_coord.y), a
 
-	ld hl, visible_buffer_bounds.min.y
-	inc (hl)
-	inc l
-	inc (hl)
+	; ld hl, visible_buffer_bounds.min.y
+	; inc (hl)
 
 	ld a, (visible_offset + 1)
 	inc a
@@ -1146,10 +1178,8 @@ scroll_map_up:
 	ret m
 	ld (map_coord.y), a
 
-	ld hl, visible_buffer_bounds.min.y
-	dec (hl)
-	inc l
-	dec (hl)
+	; ld hl, visible_buffer_bounds.min.y
+	; dec (hl)
 
 	ld a, (visible_offset + 1)
 	sub 1
@@ -1347,8 +1377,13 @@ move_hero_left:
 	ret
 
 fade_out:
+	push hl
+	push de
+	push bc
+	push af
 	ld b, 7
 .loop
+	halt
 	halt
 	ld hl, 0x5800
 
@@ -1377,6 +1412,10 @@ fade_out:
 
 	pop bc
 	djnz .loop
+	pop af
+	pop bc
+	pop de
+	pop hl
 	ret
 
 draw_debug_markup:

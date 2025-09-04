@@ -5,6 +5,7 @@ x           byte
 mirror byte
 sprite      word
 state       word
+state_2 word
 spritesheet word
 behaviour word
     ends
@@ -70,10 +71,11 @@ call_behaviour:
     ex de, hl
     ret
 
-;; ix - character (preserved)
+;; ix - character object
 ;; a - sprite number
-;; corrupts: hl, de
 update_sprite:
+    push hl
+    push de
     ld e, a
     ld d, 0
     ld hl, sprite.spritesheet_table
@@ -94,7 +96,9 @@ update_sprite:
 
     ld a, 1
     ld (dirty_screen), a
-    ret
+    pop de
+    pop hl
 
+    ret
 
     endmodule

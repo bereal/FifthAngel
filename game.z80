@@ -17,7 +17,8 @@ hero_behaviour object_behaviour 0, 0, 0, map.draw_object
 item_behaviour object_behaviour 0, item_turn, item_interact, draw_with_color
 door_behaviour object_behaviour door_tick, door_turn, door_interact, draw_with_color
 vdoor_behaviour object_behaviour door_tick, vdoor_turn, door_interact, map.draw_static_object
-hero   object 1, 1, 0, res.girl, 0, res.girl, hero_behaviour
+lift_behaviour object_behaviour door_tick, lift_turn, door_interact, draw_with_color
+hero   object 1, 1, 0, res.girl, 0, 0, res.girl, hero_behaviour
 level_objects
     dw hero
     .32 dw 0
@@ -71,8 +72,36 @@ item_interact:
     ret
 
 ;; Game object behaviours
+
+lift_turn:
+    ld ix, hl
+    ld de, (ix) ; hero coord
+    ld a, (game.hero.y)
+    xor e
+    and 0x7f
+    jr nz, door_turn.inside
+    ld e, a
+    ld a, (game.hero.x)
+    cp d
+    jr nz, door_turn.inside
+    ld bc, (map.map_coord)
+    ld hl, (ix + object.state_2)
+    xor a
+    call activate_level
+
+    .3 halt
+    ld b, 3
+1
+    push bc
+    halt
+    call move_hero_down
+    pop bc
+    djnz 1B
+    ret
+
 door_turn:
     ld ix, hl
+.inside
     ld a, (ix + object.state)
     or a
     jr nz, .check_closing
@@ -350,9 +379,10 @@ draw_objects:
     jr .clean_loop
 
 stop_hero:
+    push af
     ld a, (hero.state)
     or a
-    ret z
+    jr z, .end
 
     xor a
     ld (hero.state), a
@@ -383,6 +413,8 @@ stop_hero:
     call objects.update_sprite
 
     ld (ix + object.state), 0
+.end
+    pop af
     ret
 
     macro post_turn
@@ -577,19 +609,27 @@ log_steps:
 
 ; hl - level ref
 ; d - hero x, e - hero y
+; b - map x, c - map y
+; a - hero sprite
 activate_level:
+    call map.fade_out
+    call map.recover_buffer
     di
     ld (game.hero), de
+    ld ix, game.hero
+    ld (ix + object.state + 1), a
+    call stop_hero
 
     ld e, (hl)
     inc hl
     ld d, (hl)
     inc hl
     push de
+    push bc
     ld de, CURRENT_MAP
     call dzx0_standard
-    ld hl, CURRENT_MAP
-    call map.set_current_map
+    pop hl
+    call map.set_map_coord
     pop hl
 
     ld e, (hl)
@@ -614,7 +654,11 @@ activate_level:
 1
     pop hl
     ld de, level_objects
+    ld a, c
+    or b
+    jr z, 2F
     ldir
+2
 
     ex hl, de
     ld (hl), low(hero)
@@ -640,12 +684,24 @@ level_1_metadata
     dw .door_3
     dw .vdoor_1
     dw .keycard
+    dw .lift
     dw 0
 
-.door_1 object 8, 4, 0, res.door, 0x200, res.door, door_behaviour
-.door_2 object 14, 4, 0, res.door, 0x500, res.door, door_behaviour
-.door_3 object 14, 22, 0, res.door, 0x400, res.door, door_behaviour
-.vdoor_1 object 6, 20, 0, res.vdoor, 0x4700, res.vdoor, vdoor_behaviour
-.keycard object 6, 6, 0, res.keycard, 0x201, 0, item_behaviour
+.door_1 object 8, 4, 0, res.door, 0x200, 0, res.door, door_behaviour
+.door_2 object 14, 4, 0, res.door, 0x500, 0, res.door, door_behaviour
+.door_3 object 14, 22, 0, res.door, 0x400, 0, res.door, door_behaviour
+.vdoor_1 object 6, 20, 0, res.vdoor, 0x4700, 0, res.vdoor, vdoor_behaviour
+.keycard object 6, 6, 0, res.keycard, 0x201, 0, 0, item_behaviour
+.lift object 0, 32, 0, res.door, 0x4700, level_2, res.door, lift_behaviour
+
+level_2
+    dw level_2_metadata
+    incbin "res/gen/levels/test_level_2.zx0"
+level_2_metadata
+    dw res.tiles
+    dw .lift
+    dw 0
+
+.lift object 0, 32, 0, 0, 0x47ff, level_1, res.door, lift_behaviour
 
     endmodule

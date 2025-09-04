@@ -22,6 +22,9 @@ start:
 	; call map.draw_debug_markup
 	ld de, 0x202
 	ld hl, game.level_1
+	ld bc, 0
+	xor a
+
 	call game.activate_level
 	ld hl, res.vdoor
 	ld de, vdoor_color
