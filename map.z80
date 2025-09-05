@@ -154,7 +154,7 @@ coord_to_addr:
 	jp m, .end
 
 	ld c, a
-	ld a, BUFFER_TILE_WIDTH * 2
+	ld a, BUFFER_TILE_WIDTH * 2 - 1
 	sub c
 	jp m, .end
 
