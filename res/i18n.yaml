@@ -7,9 +7,14 @@ door_open:
 door_closed:
   en: "Door has closed"
   ru: "Дверь закрылась"
+
 keycard:
-  en: Access card
+  en: Keycard
   ru: Ключ-карта
+keycard_description:
+  en: "A keycard to open the door of \nthe same color."
+  ru: "Ключ-карта для открытия двери такого\nже цвета."
+
 step:
   en: Made {game.total_steps} steps
   ru: Сделано {game.total_steps} шагов
@@ -30,7 +35,7 @@ empty_inventory:
 
 inventory:
   en: "    Inventory:\n"
-  ru: "    Инвентарь:\n"
+  ru: '    Инвент\<арь:\n'
 
 fifth_angel:
   en: ""

@@ -64,6 +64,7 @@ item_menu:
     dw i18n.item_menu_take
     dw i18n.exit
     dw 0
+
 item_interact:
     push hl
     ld ix, hl
@@ -75,10 +76,22 @@ item_interact:
     call panel.open_menu
     pop hl
     .5 halt
+    or a
+    jr nz, .not_exam
+
+    push hl
+    ld hl, (iy + inventory.inventory_item.description)
+    ld ix, console.default_console
+    call console.clear
+    call console.println
+    pop hl
+    jr item_interact
+
+.not_exam
     cp 1
     jr z, .add
     call panel.draw_inventory
-    ret
+    jr .done
 
 .add
     ld (ix + object.state + 1), 0
@@ -87,6 +100,10 @@ item_interact:
     call inventory.add_item
     ld hl, beeper.pickup_sound
     call beeper.play_sfx
+
+.done
+    ld ix, console.default_console
+    call console.clear
     call panel.draw_inventory
     ld a, 1
     ld (dirty_screen), a
@@ -623,7 +640,7 @@ log_steps:
 	inc (hl)
 	ld hl, i18n.step
     push ix
-    ld ix, default_console
+    ld ix, console.default_console
 	call console.println
     pop ix
     ret

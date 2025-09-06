@@ -4,9 +4,10 @@
     struct inventory_item
 icon word
 name word
+description word
     ends
 
-keycard inventory_item res.keycard, i18n.keycard
+keycard inventory_item res.keycard, i18n.keycard, i18n.keycard_description
 
 ; a - item index
 add_item:

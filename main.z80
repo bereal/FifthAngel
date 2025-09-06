@@ -43,11 +43,11 @@ vdoor_color
 	ld hl, res.font
 	call console.set_font
 
-	ld ix, default_console
+	ld ix, console.default_console
 	ld a, 0b01000100
 	ld h, 19
 	ld l, 0
-	ld d, 10
+	ld d, 22
 	ld e, 4
 	call console.init
 
@@ -84,7 +84,7 @@ read:
 .notright
 	cp '0'
 	jr nz, .notzero
-	ld ix, default_console
+	ld ix, console.default_console
 	call console.clear
 	jr .next
 .notzero
@@ -126,9 +126,6 @@ modules
 	include "dzx0_standard.z80"
 
 	display "modules size: ", /D, $-modules
-
-default_console
-	console.console
 
 	module i18n
 	;; TODO: move to the 4th page (with resources)
