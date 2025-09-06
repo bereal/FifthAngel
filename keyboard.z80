@@ -2,6 +2,8 @@
 start
 
 @read_key:
+	push hl
+	push de
 	ld hl, keyboard_map
 .loop
 	ld a, (hl)
@@ -24,6 +26,8 @@ start
 .found
 	ld a, (hl)
 .end
+	pop de
+	pop hl
 	ret
 
 @read_defined_key:

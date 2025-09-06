@@ -14,8 +14,18 @@ step:
   en: Made {game.total_steps} steps
   ru: Сделано {game.total_steps} шагов
 
+item_menu_take:
+  ru: Взять
+  en: Take
+item_menu_examine:
+  ru: Рассмотреть
+  en: Examine
+exit:
+  ru: Выйти
+  en: Exit
+
 fifth_angel:
-  en : ''
+  en: ""
   ru: |-
     1 Пятый Анге\<л вострубил, и я увиде\<л звезду,
     падшую с неба на землю, и дан был ей ключ от

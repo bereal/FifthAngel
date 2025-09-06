@@ -59,7 +59,20 @@ item_turn:
     ld (adjacent_object), hl
     ret
 
+item_menu:
+    dw i18n.item_menu_examine
+    dw i18n.item_menu_take
+    dw i18n.exit
+    dw 0
 item_interact:
+    push hl
+    ld hl, item_menu
+    call panel.open_menu
+    pop hl
+    .5 halt
+    cp 1
+    ret nz
+
     ld ix, hl
     ld (ix + object.state + 1), 0
     ld (hl), 0xff ; hide

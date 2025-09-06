@@ -23,10 +23,11 @@ bitmap word
 attr word
 column byte
 row byte
-
 height byte
 width byte
     ends
+
+
 
 ;; ix - area
 ;; hl - row / col
@@ -36,11 +37,7 @@ init_area:
     push hl
 
     ld (ix + area.column), hl
-
-    ex de, hl
-    ld (ix + area.height), hl
-    ex de, hl
-
+    ld (ix + area.height), de
 
 	call pos_to_bitmap_addr
 	ld (ix + area.bitmap), hl
@@ -238,8 +235,7 @@ clean_area:
     inc h
     djnz .row_loop
 
-    dec h
-    down_row h, l
+    correct_down_line h, l
     pop bc
     djnz .loop
     ret
@@ -263,6 +259,10 @@ clean_area:
 ; ix - area
 ; a - row withih area
 invert_row:
+    push af
+    push bc
+    push de
+    push hl
     ld hl, (ix + area.attr)
     ld de, 0x20
     or a
@@ -295,6 +295,204 @@ invert_row:
 
     pop bc
     djnz .loop
+    pop hl
+    pop de
+    pop bc
+    pop af
+    ret
+
+border_corner_top_left:
+	dg .xxxxxx.
+	dg .xxxxxx.
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg ........
+
+border_corner_top_right:
+	dg .xxxxxx.
+	dg .xxxxxx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg ........
+
+border_corner_bottom_left:
+	dg ........
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xx.....
+	dg .xxxxxx.
+	dg .xxxxxx.
+
+border_corner_bottom_right:
+	dg ........
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .....xx.
+	dg .xxxxxx.
+	dg .xxxxxx.
+
+border_top:
+	db 0xff, 0xff, 0, 0, 0, 0, 0, 0
+
+border_bottom:
+	db 0, 0, 0, 0, 0, 0, 0xff, 0xff
+
+border_right:
+	.8 dg .....xx.
+border_left:
+	.8 dg .xx.....
+
+draw_cell
+	push bc
+	ld b, 8
+1
+	ld a, (de)
+	ld (hl), a
+	inc h
+	inc de
+	djnz 1B
+	pop bc
+	ret
+
+
+; ix - area addr
+draw_area_border:
+    ld hl, (ix + area.bitmap)
+    ld bc, -0x21
+    add hl, bc
+    ld bc, (ix + area.height)
+
+	push bc
+	push hl
+	; draw top left corner
+	ld de, border_corner_top_left
+	push hl
+	call draw_cell
+	pop hl
+
+	; draw horizontal line
+	inc hl
+	push bc
+1
+	ld de, border_top
+	push hl
+	call draw_cell
+	pop hl
+	inc hl
+	djnz 1B
+
+	ld de, border_corner_top_right
+	call draw_cell
+	correct_down_line h, l
+
+2
+	ld de, border_right
+	call draw_cell
+	correct_down_line h, l
+	dec c
+	jr nz, 2B
+
+	pop bc
+
+	ld de, border_corner_bottom_right
+	call draw_cell
+
+	pop hl
+	down_row h, l
+3
+	ld de, border_left
+	call draw_cell
+	correct_down_line h, l
+	dec c
+	jr nz, 3B
+
+
+	push hl
+	ld de, border_corner_bottom_left
+	call draw_cell
+	pop hl
+	pop bc
+
+	; draw bottom horizontal line
+	inc hl
+1
+	ld de, border_bottom
+	push hl
+	call draw_cell
+	pop hl
+	inc hl
+	djnz 1B
+	ret
+
+
+; ix - area
+color_area_border:
+    push af
+    push bc
+    push de
+    push hl
+    ld hl, (ix + area.attr)
+    ld bc, -0x21
+    add hl, bc
+    ld bc, (ix + area.height)
+    push hl
+    push bc
+    ld c, b
+    ld b, 0
+    inc c
+    ld de, hl
+    inc e
+    ld (hl), a
+    ldir
+
+    pop bc
+    push bc
+    ld de, 0x20
+    add hl, de
+
+1
+    ld (hl), a
+    add hl, de
+    dec c
+    jr nz, 1B
+
+    pop bc
+    pop hl
+    push bc
+    add hl, de
+    inc c
+
+2
+    ld (hl), a
+    add hl, de
+    dec c
+    jr nz, 2B
+
+    pop bc
+    sbc hl, de
+
+    ld d, h
+    ld e, l
+    inc e
+    ld c, b
+    ld b, 0
+    inc c
+    ldir
+
+    pop hl
+    pop de
+    pop bc
+    pop af
     ret
 
     endmodule

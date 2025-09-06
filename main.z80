@@ -51,10 +51,8 @@ vdoor_color
 	ld e, 4
 	call console.init
 
-	ld hl, 22
-	ld b, 10
-	ld c, 24
-	call console.draw_border
+	ld ix, panel.panel_console
+	call screen.draw_area_border
 
 	; ld de, keycard
 	; ld hl, 0x100 + 23
@@ -125,6 +123,7 @@ modules
 	include "inventory.z80"
 	include "game.z80"
 	include "console.z80"
+	include "status_panel.z80"
 	include "dzx0_standard.z80"
 
 	display "modules size: ", /D, $-modules

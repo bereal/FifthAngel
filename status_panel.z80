@@ -1,0 +1,91 @@
+    module panel
+
+panel_console:
+    console.console {
+       {
+        0x4037, 0x5837,
+        23, 1, 22, 8
+       },
+       0x4037, 23, 1, 22, 0
+    }
+
+activate:
+    ld ix, panel_console
+    ld a, 0x47
+    jp screen.color_area_border
+
+deactivate:
+    push af
+    ld ix, panel_console
+    ld a, 7
+    call screen.color_area_border
+    pop af
+    ret
+
+; hl - list of lines
+open_menu:
+    call activate
+    ld b, 0 ; count items
+
+.loop
+    ld e, (hl)
+    inc hl
+    ld a, (hl)
+    or a
+    jr z, .printed
+
+    ld d, a
+    ex de, hl
+    call console.println
+    inc b
+    ex de, hl
+    inc hl
+    jr .loop
+
+.printed
+
+    dec b
+    ld c, 0 ; selected item
+
+.select_loop
+    .10 halt
+    ld a, c
+    call screen.invert_row
+1
+    call read_key
+    jr z, 1B
+    cp 'A'
+    jr nz, .not_down
+    ld a, c
+    cp b
+    jr nc, 1B
+    call screen.invert_row
+    inc c
+    jr .select_loop
+
+.not_down
+    cp 'Q'
+    jr nz, .not_up
+    ld a, c
+    or a
+    jr z, 1B
+    call screen.invert_row
+    dec c
+    jr .select_loop
+
+.not_up
+    cp 'M'
+    jr z, .activate
+    cp ' '
+    jr nz, 1B
+
+.activate
+    ld a, c
+    call screen.invert_row
+    call deactivate
+    call console.clear
+
+    ret
+
+
+    endmodule
