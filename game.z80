@@ -66,20 +66,28 @@ item_menu:
     dw 0
 item_interact:
     push hl
+    ld ix, hl
+    ld a, (ix + object.state) ; item id
+    call inventory.resolve_item
+    ld iy, hl
+    ld de, (iy + inventory.inventory_item.name)
     ld hl, item_menu
     call panel.open_menu
     pop hl
     .5 halt
     cp 1
-    ret nz
+    jr z, .add
+    call panel.draw_inventory
+    ret
 
-    ld ix, hl
+.add
     ld (ix + object.state + 1), 0
     ld (hl), 0xff ; hide
     ld a, (ix + object.state)
     call inventory.add_item
     ld hl, beeper.pickup_sound
     call beeper.play_sfx
+    call panel.draw_inventory
     ld a, 1
     ld (dirty_screen), a
     ret

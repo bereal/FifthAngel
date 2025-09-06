@@ -6,7 +6,7 @@ icon word
 name word
     ends
 
-keycard inventory_item 0, i18n.keycard
+keycard inventory_item res.keycard, i18n.keycard
 
 ; a - item index
 add_item:
@@ -14,9 +14,10 @@ add_item:
     ld b, a
 1
     ld a, (hl)
-    or a    
-    jr nz, 2F
-    inc a
+    or a
+    jr z, 2F
+    inc hl
+    jr 1B
 2
 
     ld (hl), b
@@ -24,6 +25,23 @@ add_item:
 
 inventory_items:
     dw keycard
+
+; a - item code (overwritten)
+; out: hl - item
+resolve_item:
+    push bc
+    ld c, a
+    dec c
+    ld b, 0
+    ld hl, inventory_items
+    add hl, bc
+    add hl, bc
+    ld a, (hl)
+    inc hl
+    ld h, (hl)
+    ld l, a
+    pop bc
+    ret
 
 
 ; de - icon addr (using sprite format)
@@ -42,7 +60,7 @@ draw_icon:
     ld a, h
     inc sp
 1
-    pop de    
+    pop de
     ld (hl), d
     inc h
     djnz 1B
@@ -92,7 +110,5 @@ draw_icon:
     ld sp, 0
     ret
 
-draw_inventory:
-    
-    
+
     endmodule

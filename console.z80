@@ -39,6 +39,7 @@ init:
 clear:
 	push af
 	push hl
+	push de
 	call screen.clean_area
 	ld hl, (ix + console.area.bitmap)
 	ld (ix + console.cur_addr), hl
@@ -48,6 +49,7 @@ clear:
 	ld a, (ix + console.area.height)
 	ld (ix + console.free_rows), a
 	ld (ix + console.rotation), 0
+	pop de
 	pop hl
 	pop af
 	ret

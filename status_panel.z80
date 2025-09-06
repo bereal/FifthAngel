@@ -10,22 +10,73 @@ panel_console:
     }
 
 activate:
+    push ix
     ld ix, panel_console
     ld a, 0x47
-    jp screen.color_area_border
+    call screen.color_area_border
+    pop ix
+    ret
 
 deactivate:
+    push ix
     push af
     ld ix, panel_console
     ld a, 7
     call screen.color_area_border
     pop af
+    pop ix
+    ret
+
+draw_inventory:
+    push ix
+    ld ix, panel_console
+    call console.clear
+
+    ld hl, i18n.inventory
+    call console.println
+
+    ld hl, INVENTORY_START
+    ld de, 0x117
+    ld b, 0
+
+.loop
+    ld a, (hl)
+    or a
+    jr z, .end
+
+    push hl
+    call inventory.resolve_item
+    ld iy, hl
+    ld hl, (iy + 2)
+    call console.println
+    inc b
+    pop hl
+    inc hl
+    jr .loop
+
+.end
+    ld a, b
+    or a
+    jr nz, 1F
+    ld hl, i18n.empty_inventory
+    call console.println
+1
+    pop ix
     ret
 
 ; hl - list of lines
+; de - title
 open_menu:
+    push ix
+    ld ix, panel_console
     call activate
+    call console.clear
     ld b, 0 ; count items
+
+    ex de, hl
+    call console.println
+    call console.newline ; print title
+    ex de, hl
 
 .loop
     ld e, (hl)
@@ -50,6 +101,7 @@ open_menu:
 .select_loop
     .10 halt
     ld a, c
+    add 2
     call screen.invert_row
 1
     call read_key
@@ -59,6 +111,7 @@ open_menu:
     ld a, c
     cp b
     jr nc, 1B
+    add 2
     call screen.invert_row
     inc c
     jr .select_loop
@@ -69,6 +122,7 @@ open_menu:
     ld a, c
     or a
     jr z, 1B
+    add 2
     call screen.invert_row
     dec c
     jr .select_loop
@@ -81,11 +135,12 @@ open_menu:
 
 .activate
     ld a, c
+    add 2
     call screen.invert_row
     call deactivate
-    call console.clear
+    ld a, c
+    pop ix
 
     ret
-
 
     endmodule

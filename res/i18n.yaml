@@ -9,7 +9,7 @@ door_closed:
   ru: "Дверь закрылась"
 keycard:
   en: Access card
-  ru: Карта доступа
+  ru: Ключ-карта
 step:
   en: Made {game.total_steps} steps
   ru: Сделано {game.total_steps} шагов
@@ -18,11 +18,19 @@ item_menu_take:
   ru: Взять
   en: Take
 item_menu_examine:
-  ru: Рассмотреть
+  ru: Осмотреть
   en: Examine
 exit:
   ru: Выйти
   en: Exit
+
+empty_inventory:
+  en: "    Nothing"
+  ru: "    Пусто (:"
+
+inventory:
+  en: "    Inventory:\n"
+  ru: "    Инвентарь:\n"
 
 fifth_angel:
   en: ""

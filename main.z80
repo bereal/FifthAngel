@@ -54,9 +54,8 @@ vdoor_color
 	ld ix, panel.panel_console
 	call screen.draw_area_border
 
-	; ld de, keycard
-	; ld hl, 0x100 + 23
-	; call inventory.draw_icon
+	call panel.draw_inventory
+
 read:
 	halt
 	call read_key
