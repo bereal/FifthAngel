@@ -129,7 +129,7 @@ modules
 
 	module i18n
 	;; TODO: move to the 4th page (with resources)
-	include "res/gen/i18n.z80"
+	include I18N
 	endmodule
 
 end_of_code

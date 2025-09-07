@@ -12,8 +12,8 @@ keycard:
   en: Keycard
   ru: Ключ-карта
 keycard_description:
-  en: "A keycard to open the door of \nthe same color."
-  ru: "Ключ-карта для открытия двери такого\nже цвета."
+  en: "A keycard, opens doors of the same color."
+  ru: "Ключ-карта, открывает двери такого\nже цвета."
 
 step:
   en: Made {game.total_steps} steps
@@ -30,8 +30,8 @@ exit:
   en: Exit
 
 empty_inventory:
-  en: "    Nothing"
-  ru: "    Пусто (:"
+  en: "    Nothing :("
+  ru: "    Пусто :("
 
 inventory:
   en: "    Inventory:\n"
