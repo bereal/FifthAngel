@@ -1,0 +1,368 @@
+    module status
+
+    struct status
+icon word
+attrs word
+value byte
+    ends
+panel:
+    console.console {
+       {
+        0x4037, 0x5837,
+        23, 1, 22, 8
+       },
+       0x4037, 23, 1, 22, 0
+    }
+health_attrs db 2, 2, 4, 4, 7, 7
+health status res.icon_heartbeat, health_attrs, 100
+
+shield status res.icon_shield, health_attrs, 75
+
+rad_attrs db 4, 4, 4, 4, 2, 2
+radiation status res.icon_radiation, rad_attrs, 35
+display_status:
+    call clear_panel
+    ld hl, (panel)
+    push hl
+    ld ix, health
+    call draw_status
+    pop hl
+    ld bc, 64
+    add hl, bc
+    ld ix, shield
+    push hl
+    call draw_status
+    pop hl
+    ld bc, 64
+    add hl, bc
+    ld ix, radiation
+    call draw_status
+    ret
+
+; input: a - percents (0 - 100)
+; output: pixels (0-48)
+percents_to_pixels:
+    ld bc, 0
+    or a
+    ret z
+
+    ld l, a
+    ld h, 0
+
+    ld c, a
+    ld b, 0
+
+    .2 add hl, hl ; a * 4
+    ld de, hl
+
+    .5 add hl, hl ; a * 128
+    sbc hl, bc
+    sbc hl, de
+
+    ld a, h
+    ret
+
+; ix - status
+; hl - base screen addr
+draw_status:
+    push hl
+    ex de, hl
+    ld hl, (ix + status.icon)
+    call draw_icon
+    pop hl
+
+    .2 inc l  ; pixel addr of the bar
+    ; draw bar attrs
+    push hl
+    pixel_to_attr
+
+    ld de, (ix + status.attrs)
+    ex de, hl
+
+    push hl
+    ld bc, 6
+    ldir
+    pop hl
+    ex de, hl
+    ld c, 26
+    add hl, bc
+    ex de, hl
+    ld c, 6
+    ldir
+
+    pop hl
+    ld a, (ix + status.value)
+    call draw_bar
+    ret
+
+
+; hl - icon bitmap addr
+; de - screen bitmap addr
+draw_icon:
+    ld (.ret+1), sp
+    ld sp, hl
+
+    ex de, hl
+
+    rept 4
+    pop de
+    ld (hl), e
+    inc l
+    ld (hl), d
+    inc h
+    pop de
+    ld (hl), d
+    dec l
+    ld (hl), e
+    inc h
+    endr
+
+    correct_down_line h, l
+
+    rept 4, idx
+    pop de
+    ld (hl), e
+    inc l
+    ld (hl), d
+    inc h
+    pop de
+    ld (hl), d
+    dec l
+    ld (hl), e
+    inc h
+    endr
+
+.ret
+    ld sp, 0
+    ret
+
+; very suboptimal, but not critical anyway
+; hl - bitmap addr
+; a - percents
+draw_bar:
+    or a
+    ret z
+    push hl
+    call percents_to_pixels
+    pop hl
+
+    ex af, af'
+    ld a, 5
+    add h
+    ld h, a
+    ex af, af'
+
+    or a
+    jr nz, .nz
+    inc a
+.nz
+
+    ld c, a
+    and 7
+    ld b, a
+1
+    .3 srl c
+    jr z, .remainder
+
+.horiz_loop
+    push hl
+
+    rept 3
+    ld (hl), 0xff
+    inc h
+    endr
+
+    correct_down_line h, l
+
+    rept 3
+    ld (hl), 0xff
+    inc h
+    endr
+
+    pop hl
+    inc l
+
+    dec c
+    jr nz, .horiz_loop
+
+    ld a, b
+    or a
+    ret z
+.remainder
+    ld a, 8
+    sub b
+    ld b, a
+    ld a, 1
+
+1
+    add a
+    djnz 1B
+
+    dec a
+    xor 0xff
+
+    rept 3
+    ld (hl), a
+    inc h
+    endr
+
+    ex af, af'
+    correct_down_line h, l
+    ex af, af'
+
+    rept 3
+    ld (hl), a
+    inc h
+    endr
+    ret
+
+activate_panel:
+    push ix
+    ld ix, panel
+    ld a, 0x47
+    call screen.color_area_border
+    pop ix
+    ret
+
+deactivate_panel:
+    push ix
+    push af
+    ld ix, panel
+    ld a, 7
+    call screen.color_area_border
+    pop af
+    pop ix
+    ret
+
+init_panel:
+    ld ix, panel
+    call screen.draw_area_border
+    jr clear_panel + 3
+clear_panel:
+    ld ix, panel
+    call console.clear
+    ld a, 7
+    call screen.set_area_attr
+    ret
+
+draw_inventory:
+    push ix
+    ld ix, panel
+    call console.clear
+    ld a, 7
+    call screen.set_area_attr
+
+    ld hl, i18n.inventory
+    call console.println
+
+    ld hl, INVENTORY_START
+    ld de, 0x117
+    ld b, 0
+
+.loop
+    ld a, (hl)
+    or a
+    jr z, .end
+
+    push hl
+    call inventory.resolve_item
+    ld iy, hl
+    ld hl, (iy + 2)
+    call console.println
+    inc b
+    pop hl
+    inc hl
+    jr .loop
+
+.end
+    ld a, b
+    or a
+    jr nz, 1F
+    ld hl, i18n.empty_inventory
+    call console.println
+1
+    pop ix
+    ret
+
+; hl - list of lines
+; de - title
+open_menu:
+    push ix
+    ld ix, panel
+    call activate_panel
+    call console.clear
+    ld a, 7
+    call screen.set_area_attr
+    ld b, 0 ; count items
+
+    ex de, hl
+    call console.println
+    call console.newline ; print title
+    ex de, hl
+
+.loop
+    ld e, (hl)
+    inc hl
+    ld a, (hl)
+    or a
+    jr z, .printed
+
+    ld d, a
+    ex de, hl
+    call console.println
+    inc b
+    ex de, hl
+    inc hl
+    jr .loop
+
+.printed
+
+    dec b
+    ld c, 0 ; selected item
+
+.select_loop
+    .10 halt
+    ld a, c
+    add 2
+    call screen.invert_row
+1
+    call read_key
+    jr z, 1B
+    cp 'A'
+    jr nz, .not_down
+    ld a, c
+    cp b
+    jr nc, 1B
+    add 2
+    call screen.invert_row
+    inc c
+    jr .select_loop
+
+.not_down
+    cp 'Q'
+    jr nz, .not_up
+    ld a, c
+    or a
+    jr z, 1B
+    add 2
+    call screen.invert_row
+    dec c
+    jr .select_loop
+
+.not_up
+    cp 'M'
+    jr z, .activate
+    cp ' '
+    jr nz, 1B
+
+.activate
+    ld a, c
+    add 2
+    call screen.invert_row
+    call deactivate_panel
+    ld a, c
+    pop ix
+
+    ret
+
+    endmodule

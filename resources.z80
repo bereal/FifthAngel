@@ -33,7 +33,12 @@ vdoor
 keycard
 	incbin "res/gen/sprites/card.bin"
 
-
+icon_heartbeat
+	incbin "res/gen/icons/heartbeat.bin"
+icon_shield
+	incbin "res/gen/icons/shield.bin"
+icon_radiation
+	incbin "res/gen/icons/radiation.bin"
 font
 	include "res/gen/fonts.z80"
 

@@ -73,7 +73,7 @@ item_interact:
     ld iy, hl
     ld de, (iy + inventory.inventory_item.name)
     ld hl, item_menu
-    call panel.open_menu
+    call status.open_menu
     pop hl
     .5 halt
     or a
@@ -90,7 +90,7 @@ item_interact:
 .not_exam
     cp 1
     jr z, .add
-    call panel.draw_inventory
+    call status.display_status
     jr .done
 
 .add
@@ -104,7 +104,7 @@ item_interact:
 .done
     ld ix, console.default_console
     call console.clear
-    call panel.draw_inventory
+    call status.display_status
     ld a, 1
     ld (dirty_screen), a
     ret
@@ -299,7 +299,7 @@ door_tick:
     or 0x80
     ld (ix + object.state), a
     and 0x7f
-    sra a
+    srl a
     call objects.update_sprite
     ret
 
@@ -329,7 +329,7 @@ door_tick:
 2
     inc a
     ld (ix + object.state), a
-    sra a
+    srl a
     call objects.update_sprite
     ret
 

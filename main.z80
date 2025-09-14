@@ -51,11 +51,8 @@ vdoor_color
 	ld e, 4
 	call console.init
 
-	ld ix, panel.panel_console
-	call screen.draw_area_border
-
-	call panel.draw_inventory
-
+	call status.init_panel
+	call status.display_status
 read:
 	halt
 	call read_key
@@ -122,7 +119,7 @@ modules
 	include "inventory.z80"
 	include "game.z80"
 	include "console.z80"
-	include "status_panel.z80"
+	include "status.z80"
 	include "dzx0_standard.z80"
 
 	display "modules size: ", /D, $-modules

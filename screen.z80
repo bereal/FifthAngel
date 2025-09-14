@@ -56,6 +56,9 @@ init_area:
 ; ix - area
 ; a - attribute
 set_area_attr:
+    push hl
+    push de
+    push bc
     ld hl, (ix + area.attr)
     ex af, af'
     ld a, (ix + area.width)
@@ -78,6 +81,9 @@ set_area_attr:
     add hl, bc
     pop bc
     djnz .loop
+    pop bc
+    pop de
+    pop hl
     ret
 
 ; h = row, l = column
@@ -136,6 +142,14 @@ pos_to_attr_addr:
 1
     endm
 
+    ; convert pixel addr in hl to attr addr, corrupts a
+    macro pixel_to_attr
+        ld a, h
+        and 0b11000
+        .3 srl a
+        or 0x58
+        ld h, a
+    endm
 
 ; ix - area
 scroll_area_up:

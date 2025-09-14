@@ -14,8 +14,8 @@
             "scale": 1.5131,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 164.23237062983284,
-                "y": 222.39111757319415
+                "x": 590.5095499306061,
+                "y": 225.69559183133967
             }
         },
         "levels/test_level_2.tmx": {
@@ -41,11 +41,11 @@
         }
     },
     "last.imagePath": "/home/bereal/sandbox/panda48/graphics/tiles",
-    "map.height": 32,
+    "map.height": 16,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 32,
+    "map.width": 16,
     "openFiles": [
         "levels/test_level.tmx"
     ],

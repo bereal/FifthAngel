@@ -42,7 +42,7 @@ set_map_coord
 
 	ld d, 0
 	ld e, a
-	sra e
+	srl e
 	add hl, de
 
 	ld (buffered_map_addr), hl
@@ -1426,7 +1426,7 @@ draw_debug_markup:
 1
 	.3 sla a
 	ld (hl), a
-	.3 sra a
+	.3 srl a
 	inc a
 	and 7
 	add hl, de
