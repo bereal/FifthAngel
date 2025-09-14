@@ -49,14 +49,17 @@ percents_to_pixels:
     ld l, a
     ld h, 0
 
-    ld c, a
-    ld b, 0
-
     .2 add hl, hl ; a * 4
-    ld de, hl
+    ld d, h
+    ld e, l
 
-    .5 add hl, hl ; a * 128
-    sbc hl, bc
+    ld h, a
+    ld l, 0
+    srl h
+    rr l ; hl = a * 128
+
+    sbc hl, de
+    ld e, a
     sbc hl, de
 
     ld a, h
