@@ -50,8 +50,7 @@ percents_to_pixels:
     ld h, 0
 
     .2 add hl, hl ; a * 4
-    ld d, h
-    ld e, l
+    ex de, hl
 
     ld h, a
     ld l, 0

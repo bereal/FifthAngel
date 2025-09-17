@@ -27,8 +27,6 @@ height byte
 width byte
     ends
 
-
-
 ;; ix - area
 ;; hl - row / col
 ;; de - width / height
@@ -382,8 +380,15 @@ draw_cell
 ; ix - area addr
 draw_area_border:
     ld hl, (ix + area.bitmap)
-    ld bc, -0x21
-    add hl, bc
+    ld a, l
+    sub 0x20
+    ld l, a
+    jr nc, 1F
+    ld a, h
+    sub 8
+    ld h, a
+1
+    dec l
     ld bc, (ix + area.height)
 
 	push bc

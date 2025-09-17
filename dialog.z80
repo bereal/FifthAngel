@@ -1,0 +1,65 @@
+    module dialog
+
+dialog console.console
+
+; h - width
+; l - height
+draw_dialog:
+    ld de, hl
+    ld a, 0x20
+    sub h
+    rra
+    ld b, a
+
+    ld a, 24
+    sub l
+    rra
+    ld h, a
+    ld l, b
+
+    ld ix, dialog
+    ld a, 7
+    call console.init
+    call console.clear
+    call screen.draw_area_border
+    ret
+
+popup_dialog:
+    ld de, hl
+    ld hl, 0x202
+
+.loop
+    push hl
+    push de
+    push bc
+    .2 halt
+    call draw_dialog
+    xor a
+    call screen.clean_area
+    pop bc
+    pop de
+    pop hl
+
+    ld b, 0
+
+    ld a, e
+    cp l
+
+    jr z, 1F
+    .2 inc l
+    inc b
+
+1
+    ld a, d
+    cp h
+    jr z, 2F
+    .2 inc h
+    inc b
+
+2
+    ld a, b
+    or a
+    ret z
+    jr .loop
+
+    endmodule
