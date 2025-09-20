@@ -238,6 +238,7 @@ deactivate_panel:
 
 init_panel:
     ld ix, panel
+    ld a, 7
     call screen.draw_area_border
     jr clear_panel + 3
 clear_panel:

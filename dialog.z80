@@ -1,6 +1,13 @@
     module dialog
 
-dialog console.console
+    struct dialog
+title word
+lines word
+height byte
+width byte
+    ends
+
+dialog_console console.console
 
 ; h - width
 ; l - height
@@ -17,16 +24,25 @@ draw_dialog:
     ld h, a
     ld l, b
 
-    ld ix, dialog
+    ld ix, dialog_console
     ld a, 7
+    halt
     call console.init
     call console.clear
+    ld a, 0x47
     call screen.draw_area_border
+    ; ld a, 0x47
+    ; call screen.color_area_border
     ret
 
-popup_dialog:
-    ld de, hl
+; ix - dialog
+animate_dialog:
+    push ix
+    ld de, (ix + dialog.height)
     ld hl, 0x202
+    bit 0, e
+    jr z, .loop
+    dec l
 
 .loop
     push hl
@@ -34,8 +50,8 @@ popup_dialog:
     push bc
     .2 halt
     call draw_dialog
-    xor a
-    call screen.clean_area
+    ; xor a
+    ; call screen.clean_area
     pop bc
     pop de
     pop hl
@@ -59,7 +75,92 @@ popup_dialog:
 2
     ld a, b
     or a
-    ret z
+    jr z, .end
     jr .loop
+
+.end
+    pop ix
+    ret
+
+; ix - dialog
+open_dialog:
+    push ix
+    ld hl, (ix + dialog.height)
+    call draw_dialog
+    pop ix
+
+    ld hl, (ix + dialog.lines)
+    ld de, (ix + dialog.title)
+
+    ld ix, dialog_console
+
+    ld b, 0 ; count items
+    ex de, hl
+    call console.println
+    call console.newline ; print title
+    ex de, hl
+
+.loop
+    ld e, (hl)
+    inc hl
+    ld a, (hl)
+    or a
+    jr z, .printed
+
+    ld d, a
+    ex de, hl
+    call console.println
+    inc b
+    ex de, hl
+    inc hl
+    jr .loop
+
+.printed
+
+    dec b
+    ld c, 0 ; selected item
+
+.select_loop
+    .10 halt
+    ld a, c
+    add 2
+    call screen.invert_row
+1
+    call read_key
+    jr z, 1B
+    cp 'A'
+    jr nz, .not_down
+    ld a, c
+    cp b
+    jr nc, 1B
+    add 2
+    call screen.invert_row
+    inc c
+    jr .select_loop
+
+.not_down
+    cp 'Q'
+    jr nz, .not_up
+    ld a, c
+    or a
+    jr z, 1B
+    add 2
+    call screen.invert_row
+    dec c
+    jr .select_loop
+
+.not_up
+    cp 'M'
+    jr z, .activate
+    cp ' '
+    jr nz, 1B
+
+.activate
+    ld a, c
+    add 2
+    call screen.invert_row
+    ld a, c
+
+    ret
 
     endmodule

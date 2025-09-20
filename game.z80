@@ -59,21 +59,27 @@ item_turn:
     ld (adjacent_object), hl
     ret
 
-item_menu:
+item_menu_lines:
     dw i18n.item_menu_examine
     dw i18n.item_menu_take
     dw i18n.exit
     dw 0
-
+item_menu dialog.dialog 0, item_menu_lines, 5, 8
 item_interact:
     push hl
     ld ix, hl
     ld a, (ix + object.state) ; item id
     call inventory.resolve_item
     ld iy, hl
-    ld de, (iy + inventory.inventory_item.name)
-    ld hl, item_menu
-    call status.open_menu
+
+    ld hl, (iy + inventory.inventory_item.name)
+    ld (item_menu), hl
+    ld hl, item_menu_lines
+    push ix
+    ld ix, item_menu
+    call dialog.open_dialog
+
+    pop ix
     pop hl
     .5 halt
     or a

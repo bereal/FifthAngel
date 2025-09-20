@@ -27,6 +27,16 @@ height byte
 width byte
     ends
 
+
+    ; convert pixel addr in hl to attr addr, corrupts a
+    macro pixel_to_attr
+        ld a, h
+        and 0b11000
+        .3 srl a
+        or 0x58
+        ld h, a
+    endm
+
 ;; ix - area
 ;; hl - row / col
 ;; de - width / height
@@ -39,10 +49,7 @@ init_area:
 
 	call pos_to_bitmap_addr
 	ld (ix + area.bitmap), hl
-    pop hl
-    push hl
-
-    call pos_to_attr_addr
+    pixel_to_attr
     ld (ix + area.attr), hl
 
     pop hl
@@ -138,15 +145,6 @@ pos_to_attr_addr:
         sub 8
         ld h, a
 1
-    endm
-
-    ; convert pixel addr in hl to attr addr, corrupts a
-    macro pixel_to_attr
-        ld a, h
-        and 0b11000
-        .3 srl a
-        or 0x58
-        ld h, a
     endm
 
 ; ix - area
@@ -364,7 +362,7 @@ border_right:
 border_left:
 	.8 dg .xx.....
 
-draw_cell
+draw_border_cell
 	push bc
 	ld b, 8
 1
@@ -373,13 +371,22 @@ draw_cell
 	inc h
 	inc de
 	djnz 1B
+    push hl
+    dec h
+    pixel_to_attr
+.border_color
+    ld (hl), 7
+    pop hl
 	pop bc
 	ret
 
 
 ; ix - area addr
+; a - attribute
 draw_area_border:
+    ld (draw_border_cell.border_color + 1), a
     ld hl, (ix + area.bitmap)
+    ex af, af'
     ld a, l
     sub 0x20
     ld l, a
@@ -396,7 +403,7 @@ draw_area_border:
 	; draw top left corner
 	ld de, border_corner_top_left
 	push hl
-	call draw_cell
+	call draw_border_cell
 	pop hl
 
 	; draw horizontal line
@@ -405,18 +412,18 @@ draw_area_border:
 1
 	ld de, border_top
 	push hl
-	call draw_cell
+	call draw_border_cell
 	pop hl
 	inc hl
 	djnz 1B
 
 	ld de, border_corner_top_right
-	call draw_cell
+	call draw_border_cell
 	correct_down_line h, l
 
 2
 	ld de, border_right
-	call draw_cell
+	call draw_border_cell
 	correct_down_line h, l
 	dec c
 	jr nz, 2B
@@ -424,13 +431,13 @@ draw_area_border:
 	pop bc
 
 	ld de, border_corner_bottom_right
-	call draw_cell
+	call draw_border_cell
 
 	pop hl
 	down_row h, l
 3
 	ld de, border_left
-	call draw_cell
+	call draw_border_cell
 	correct_down_line h, l
 	dec c
 	jr nz, 3B
@@ -438,7 +445,7 @@ draw_area_border:
 
 	push hl
 	ld de, border_corner_bottom_left
-	call draw_cell
+	call draw_border_cell
 	pop hl
 	pop bc
 
@@ -447,7 +454,7 @@ draw_area_border:
 1
 	ld de, border_bottom
 	push hl
-	call draw_cell
+	call draw_border_cell
 	pop hl
 	inc hl
 	djnz 1B
