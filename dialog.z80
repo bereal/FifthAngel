@@ -2,9 +2,11 @@
 
     struct dialog
 title word
+subtitle word
 lines word
 height byte
 width byte
+title_alignment byte
     ends
 
 dialog_console console.console
@@ -82,6 +84,23 @@ animate_dialog:
     pop ix
     ret
 
+count_newlines:
+    ld b, 0
+    ld a, h
+    or a
+    ret z
+    inc b
+1
+    ld a, (hl)
+    or a
+    ret z
+    cp 13
+    jr nz, 2F
+    inc b
+2
+    inc hl
+    jr 1B
+
 ; ix - dialog
 open_dialog:
     push ix
@@ -89,17 +108,34 @@ open_dialog:
     call draw_dialog
     pop ix
 
-    ld hl, (ix + dialog.lines)
-    ld de, (ix + dialog.title)
-
+    ld de, (ix + dialog.lines)
+    push de
+    ld de, (ix + dialog.subtitle)
+    ld hl, (ix + dialog.title)
     ld ix, dialog_console
 
-    ld b, 0 ; count items
-    ex de, hl
     call console.println
     call console.newline ; print title
-    ex de, hl
 
+    ex de, hl
+    push hl
+    call count_newlines
+    pop hl
+
+    ld a, b
+    or a
+    jr z, 1F
+
+    push af
+    call console.println
+    call console.newline
+    pop af
+    inc a
+
+1
+    add 2
+    ld (.align_row + 1), a
+    pop hl
 .loop
     ld e, (hl)
     inc hl
@@ -123,6 +159,7 @@ open_dialog:
 .select_loop
     .10 halt
     ld a, c
+.align_row
     add 2
     call screen.invert_row
 1

@@ -64,7 +64,7 @@ item_menu_lines:
     dw i18n.item_menu_take
     dw i18n.exit
     dw 0
-item_menu dialog.dialog 0, item_menu_lines, 5, 8
+item_menu dialog.dialog 0, 0, item_menu_lines, 5, 8
 item_interact:
     push hl
     ld ix, hl
