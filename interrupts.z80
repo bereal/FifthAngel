@@ -17,6 +17,9 @@ set_im2:
     ei
     ret
 
+sec_counter:
+    db 50
+
 routine:
     di
 
@@ -35,6 +38,12 @@ routine:
     push de
     push hl
 
+    ld hl, sec_counter
+    dec (hl)
+    jr nz, 1F
+    ld (hl), 50
+    call status.roll_dice
+1
     xor a
     ld hl, game.level_objects
     call objects.object_loop

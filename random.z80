@@ -1,0 +1,95 @@
+    module random
+
+seed db 1
+
+update_seed:
+    ld a, r
+    or a
+    jr nz, 1F
+    inc a
+1
+    ld (seed), a
+    ret
+
+get_random:
+    ld a, (seed)
+    and 0xb8
+    scf
+    jp po, 1F
+    ccf
+1
+    ld a, (seed)
+    rla
+    ld (seed), a
+    ret
+mod_6:
+     bit 7, a
+    jr z, 1F
+    sub 126
+    jr mod_6
+
+1
+    bit 6, a
+    jr z, 2F
+    sub 60
+    jr 1B
+
+2
+    bit 5, a
+    jr z, 3F
+    sub 30
+    jr 2B
+
+3
+    bit 4, a
+    jr z, 4F
+    sub 12
+    jr 3B
+
+4
+    cp 6
+    ret c
+    sub 6
+    jr 4B
+    ret
+
+get_random_dice:
+    call get_random
+    dec a ; 0 - 254
+    call mod_6
+    ret
+get_random_percentage:
+    push hl
+    push de
+    call get_random
+    ld l, a
+    ld h, 0
+
+
+    ld de, 0
+    add hl, hl
+    add hl, hl
+    ex de, hl
+    add hl, de
+
+    add hl, hl
+    add hl, hl
+    add hl, hl
+
+    push hl
+    add hl, de
+    ex de, hl
+    pop hl
+    add hl, hl
+    add hl, de
+
+    ld a, h
+    pop de
+    pop hl
+    ret
+
+    endmodule
+
+
+
+

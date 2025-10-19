@@ -39,6 +39,15 @@ icon_shield
 	incbin "res/gen/icons/shield.bin"
 icon_radiation
 	incbin "res/gen/icons/radiation.bin"
+
+dices:
+	incbin "res/gen/icons/dice_1.bin"
+	incbin "res/gen/icons/dice_2.bin"
+	incbin "res/gen/icons/dice_3.bin"
+	incbin "res/gen/icons/dice_4.bin"
+	incbin "res/gen/icons/dice_5.bin"
+	incbin "res/gen/icons/dice_6.bin"
+
 font
 	include "res/gen/fonts.z80"
 
