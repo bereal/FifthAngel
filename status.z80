@@ -368,4 +368,35 @@ open_menu:
 
     ret
 
+
+; hl - screen addr
+; a - dice number
+draw_dice:
+    push hl, de, bc
+
+    ex de, hl
+    ld h, 0
+    ld l, a
+    .5 add hl, hl
+    ld bc, res.dices
+    add hl, bc
+
+    call draw_icon
+
+    pop bc, de, hl
+    ret
+
+roll_dice:
+    push hl, bc
+    ld b, 4
+    ld hl, 0x50b7
+1
+    call random.get_random_dice
+    call draw_dice
+    .2 inc l
+    djnz 1B
+
+    pop bc, hl
+    ret
+
     endmodule

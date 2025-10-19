@@ -121,6 +121,7 @@ modules
 	include "dialog.z80"
 	include "game.z80"
 	include "status.z80"
+	include "random.z80"
 	include "dzx0_standard.z80"
 
 	display "modules size: ", /D, $-modules
