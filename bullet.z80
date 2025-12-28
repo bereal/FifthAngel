@@ -1,0 +1,167 @@
+    module bullet
+
+    struct bullet
+y byte
+x byte
+y_d byte
+row byte
+
+sprite block 3
+data block 8
+    ends
+
+bullet_1 bullet
+
+; hl - bullet object
+; a - initial row value
+init_bullet:
+    ld de, bullet.row
+    add hl, de
+    ld (hl), a
+    inc hl
+    ld (hl), 7
+    inc hl
+    ld de, hl
+    .2 inc de
+    ld (hl), e
+    inc hl
+    ld (hl), d
+    ret
+
+clear_bullet:
+    ld bc, (ix)
+    bit 7, c
+    ret nz
+    call map.coord_to_addr
+    ret m
+    xor a
+    ld (hl), a
+    ret
+
+; set Z iff could not draw
+draw_bullet:
+    ld bc, (ix)
+    bit 7, c
+    ret nz
+    push bc
+    call update_bullet_data
+    pop bc
+    call map.coord_to_addr
+    jp p, 1F
+    xor a
+    or a
+    ret
+1
+
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
+    ex de, hl
+    ld hl, ix
+    ld bc, bullet.sprite
+    add hl, bc
+    .3 ldi
+    ld a, 1
+    ld (dirty_screen), a
+    or a
+    ret
+
+; C is set if need to check collision
+move_bullet_right:
+    ld a, (ix + bullet.row)
+    .4 rrca
+    ld (ix + bullet.row), a
+    ld (dirty_screen), a
+    ret nc
+
+    call clear_bullet
+    inc (ix + bullet.x)
+    scf
+    ret
+
+; NZ if collides
+bullet_collides:
+    ld bc, (ix)
+    call map.coord_to_addr
+    jp m, .out
+    ld a, (hl)
+    and 0x7f
+    ret
+
+.out
+    inc a
+    ret
+
+
+; bc - start location
+; ix - bullet
+shoot_right:
+    ld hl, ix
+    ld a, 0xc0
+    call init_bullet
+    ld (ix + bullet.y_d), 3
+    ld (ix), bc
+1
+    call draw_bullet
+    halt
+    call move_bullet_right
+    jr nc, 1B
+
+    call bullet_collides
+    jr z, 1B
+
+2
+    set 7, (ix)
+    ret
+
+; ix - bullet object
+update_bullet_data:
+    push hl
+    push de
+    push bc
+    ld b, (ix + bullet.y_d)
+    ld a, 6
+    sub b
+    ld c, a
+
+    ld hl, ix
+    ld de, bullet.data
+    add hl, de
+
+    ld a, b
+    or a
+    jr z, 2F
+
+    xor a
+1
+    ld (hl), a
+    inc hl
+    djnz 1B
+
+2
+    ld a, (ix + bullet.row)
+
+    ld (hl), a
+    inc hl
+    ld (hl), a
+    inc hl
+
+    ld a, c
+    or a
+    jr z, .end
+
+    ld b, a
+    xor a
+3
+    ld (hl), a
+    inc hl
+    djnz 3B
+
+.end
+    pop bc
+    pop de
+    pop hl
+    ret
+
+    endmodule

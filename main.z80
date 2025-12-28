@@ -94,6 +94,13 @@ read:
 	call game.interact
 	jr .next
 .nointeract
+	cp '9'
+	jr nz, 1F
+	ld ix, bullet.bullet_1
+	ld bc, 0x202
+	call bullet.shoot_right
+	jr .next
+1
 	cp 'H'
 	jr nz, .stop
 	call map.fade_out
@@ -111,6 +118,7 @@ modules
 	include "keyboard.z80"
 	include "beeper.z80"
 	include "map.z80"
+	include "bullet.z80"
 	include "sprite.z80"
 	include "tiles.z80"
 	include "interrupts.z80"
