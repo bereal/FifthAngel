@@ -1,6 +1,7 @@
     module bullet
 
     struct bullet_state
+distance byte
 y byte
 x byte
 y_d byte
@@ -9,18 +10,52 @@ sprite block 3
 data block 8
 move_proc word
     ends
-bullet_1 bullet_state
 
-bullets dw bullet_1, 0
+free_bullets db 3
+bullets block bullet_state * 3, 0
 
-; ix - bullet object
+find_bullet_slot:
+    ld a, (free_bullets)
+    or a
+    ret z
+
+    push hl
+    push bc
+    push de
+    ld hl, bullets
+    ld b, 3
+    ld de, bullet_state
+
+1
+    ld a, (hl)
+    or a
+    jr z, .found
+
+    add hl, de
+    djnz 1B
+    ret
+
+.found
+    ld ix, hl
+    pop de
+    pop bc
+    pop hl
+    inc a
+    ret
+
+
 ; hl - move proc
 ; bc - coord
 ; d - y_d
 ; a - initial row value
+
+; out: ix - bullet
+; Z - if cannot allocate a bullet
 init_bullet:
     ld (ix + bullet_state.move_proc), hl
     ld hl, ix
+    ld (hl), 10
+    inc hl
     ld (hl), c
     inc hl
     ld (hl), b
@@ -36,12 +71,13 @@ init_bullet:
     ld (hl), e
     inc hl
     ld (hl), d
+    ld hl, free_bullets
+    dec (hl)
     ret
 
 bullet_tick:
-    ld a, (hl)
-    or a
-    ret z
+    dec (hl)
+    jr z, .stop
 
     ld ix, hl
     ld hl, (ix + bullet_state.move_proc)
@@ -53,49 +89,62 @@ bullet_tick:
     jr nc, .draw
 
     call bullet_collides
-    jr nz, .hide
+    jr nz, .free
 
 .draw
     call draw_bullet
     ret
 
-.hide
-    ld (ix), 0
+.stop
+    ld ix, hl
+    call clear_bullet
+.free
+    call free_bullet
     ret
 
 bullet_loop:
-    ld hl, bullets
-.loop
-    ld e, (hl)
-    inc hl
-    ld d, (hl)
-
-    xor a
-    or d
+    ld a, (free_bullets)
+    cp 3
     ret z
 
+    ld hl, bullets
+    ld b, 3
+.loop
+    ld a, (hl)
+    or a
+    jr z, .next
+
     push hl
-    ex de, hl
+    push bc
     call bullet_tick
+    pop bc
     pop hl
-    inc hl
-    jr .loop
+
+.next
+    ld de, bullet_state
+    add hl, de
+    djnz .loop
+    ret
 
 clear_bullet:
-    ld bc, (ix)
-    bit 7, c
-    ret nz
+    ld bc, (ix + bullet_state.y)
     call map.coord_to_addr
     ret m
     xor a
     ld (hl), a
+    inc a
+    ld (dirty_screen), a
+    ret
+
+free_bullet:
+    ld (ix), 0
+    ld hl, free_bullets
+    inc (hl)
     ret
 
 ; set Z iff could not draw
 draw_bullet:
-    ld bc, (ix)
-    bit 7, c
-    ret nz
+    ld bc, (ix + bullet_state.y)
     push bc
     call update_bullet_data
     pop bc
@@ -135,17 +184,14 @@ move_bullet_right:
     ret
 
 move_bullet_left:
-    ld bc, bullet_state.row
-    add hl, bc
-    ld a, (hl)
+    ld a, (ix + bullet_state.row)
     .4 rlca
-    ld (hl), a
+    ld (ix + bullet_state.row), a
     ld (dirty_screen), a
     ret nc
 
     call clear_bullet
-    dec hl
-    dec (hl)
+    dec (ix + bullet_state.x)
     scf
     ret
 
@@ -191,7 +237,7 @@ move_bullet_up:
 
 ; NZ if collides
 bullet_collides:
-    ld bc, (ix)
+    ld bc, (ix + bullet_state.y)
     call map.coord_to_addr
     ld a, (hl)
     and 0x7f
@@ -199,10 +245,8 @@ bullet_collides:
 
 ; ix - bullet
 shoot_right:
-    ld ix, bullet_1
-    ld a, (ix)
-    or a
-    ret nz
+    call find_bullet_slot
+    ret z
 
     ld hl, game.hero
     ld c, (hl)
@@ -223,36 +267,32 @@ shoot_right:
     ld d, 3
     call init_bullet
     ret
-
-; ix - bullet
-shoot_right:
-    ld ix, bullet_1
-    ld a, (ix)
-    or a
-    ret nz
-
-    ld hl, game.hero
-    ld c, (hl)
-    inc hl
-    ld b, (hl)
-    .2 inc b
-    inc c
-    push bc
-    call map.coord_to_addr
-    pop bc
-    ret m
-    ld a, (hl)
-    and 0x7f
-    ret nz
-
-    ld a, 0xc0
-    ld hl, move_bullet_right
-    ld d, 3
-    call init_bullet
-    ret
-
 
 ; ix - bullet object
+shoot_left:
+    call find_bullet_slot
+    ret z
+
+    ld hl, game.hero
+    ld c, (hl)
+    inc hl
+    ld b, (hl)
+    dec b
+    inc c
+    push bc
+    call map.coord_to_addr
+    pop bc
+    ret m
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
+    ld a, 3
+    ld d, a
+    ld hl, move_bullet_left
+    call init_bullet
+    ret
+
 update_bullet_data:
     push hl
     push de

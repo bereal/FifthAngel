@@ -31,7 +31,7 @@ interact:
     ld hl, (adjacent_object)
     ld a, h
     or a
-    ret z
+    jp z, shoot
 
     ld a, object_behaviour.interact
     jp objects.call_behaviour ; call & ret
@@ -469,6 +469,15 @@ stop_hero:
     call objects.object_loop
     endm
 
+shoot:
+    ld a, (hero.state + 1)
+    cp DIR_RIGHT
+    jr nz, 1F
+    call bullet.shoot_right
+    ret
+1
+    call bullet.shoot_left
+    ret
 
 move_hero_right:
     ld a, (hero.state + 1)
