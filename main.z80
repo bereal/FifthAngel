@@ -88,21 +88,11 @@ read:
 	cp 'M'
 	jr z, .interact
 	cp ' '
-	jr nz, .nointeract
+	jr nz, .stop
 .interact
 	call game.stop_hero
 	call game.interact
 	jr .next
-.nointeract
-	cp '9'
-	jr nz, 1F
-	call bullet.shoot_right
-	jr .next
-1
-	cp 'H'
-	jr nz, .stop
-	call map.fade_out
-
 .stop
 	call game.stop_hero
 

@@ -473,11 +473,16 @@ shoot:
     ld a, (hero.state + 1)
     cp DIR_RIGHT
     jr nz, 1F
-    call bullet.shoot_right
-    ret
+    jp bullet.shoot_right
 1
-    call bullet.shoot_left
-    ret
+    cp DIR_FACE
+    jr nz, 2F
+    jp bullet.shoot_down
+2
+    cp DIR_BACK
+    jp nz, bullet.shoot_left
+
+    jp bullet.shoot_up
 
 move_hero_right:
     ld a, (hero.state + 1)

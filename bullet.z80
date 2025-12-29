@@ -64,7 +64,7 @@ init_bullet:
     inc hl
     ld (hl), a
     inc hl
-    ld (hl), 7
+    ld (hl), 0x46
     inc hl
     ld de, hl
     .2 inc de
@@ -142,7 +142,6 @@ free_bullet:
     inc (hl)
     ret
 
-; set Z iff could not draw
 draw_bullet:
     ld bc, (ix + bullet_state.y)
     push bc
@@ -197,10 +196,11 @@ move_bullet_left:
 
 ; hl - bullet
 move_bullet_down:
+    ld hl, ix
     ld bc, bullet_state.y_d
     add hl, bc
     ld a, (hl)
-    add 2
+    add 4
     cp 7
     jr nc, .cell
     ld (hl), a
@@ -211,29 +211,30 @@ move_bullet_down:
 .cell
     ld (hl), 0
     call clear_bullet
-    .2 dec hl
-    inc (hl)
+    inc (ix + bullet_state.y)
     scf
     ret
 
-; hl - bullet
+
 move_bullet_up:
+    ld hl, ix
     ld bc, bullet_state.y_d
     add hl, bc
     ld a, (hl)
-    sub 2
+    sub 4
     jr c, .cell
     ld (hl), a
     ld (dirty_screen), a
+    ccf
     ret
 
 .cell
-    ld (hl), 0
+    ld (hl), 6
     call clear_bullet
-    .2 dec hl
-    inc (hl)
+    dec (ix + bullet_state.y)
     scf
     ret
+
 
 ; NZ if collides
 bullet_collides:
@@ -253,7 +254,15 @@ shoot_right:
     inc hl
     ld b, (hl)
     .2 inc b
-    inc c
+
+    ld a, r
+    and 1
+    ld d, a
+    jr nz, 1F
+    ld d, 5
+1
+    add c
+    ld c, a
     push bc
     call map.coord_to_addr
     pop bc
@@ -264,7 +273,6 @@ shoot_right:
 
     ld a, 0xc0
     ld hl, move_bullet_right
-    ld d, 3
     call init_bullet
     ret
 
@@ -278,9 +286,20 @@ shoot_left:
     inc hl
     ld b, (hl)
     dec b
-    inc c
+
+    ld a, r
+    and 1
+    ld d, a
+    jr nz, 1F
+    ld d, 5
+1
+    add c
+    ld c, a
+
     push bc
+    push de
     call map.coord_to_addr
+    pop de
     pop bc
     ret m
     ld a, (hl)
@@ -288,8 +307,79 @@ shoot_left:
     ret nz
 
     ld a, 3
-    ld d, a
     ld hl, move_bullet_left
+    call init_bullet
+    ret
+
+shoot_down:
+    call find_bullet_slot
+    ret z
+
+    ld hl, game.hero
+    ld c, (hl)
+    inc hl
+    ld b, (hl)
+    .2 inc c
+
+    ld a, r
+    and 1
+    ld d, 6
+    jr z, 1F
+    ld d, 0x60
+
+1
+    add b
+    ld b, a
+
+    push bc
+    push de
+    call map.coord_to_addr
+    pop de
+    pop bc
+    ret m
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
+    ld a, d
+    ld d, 6
+    ld hl, move_bullet_down
+    call init_bullet
+    ret
+
+shoot_up:
+    call find_bullet_slot
+    ret z
+
+    ld hl, game.hero
+    ld c, (hl)
+    inc hl
+    ld b, (hl)
+    dec c
+
+    ld a, r
+    and 1
+    ld d, 6
+    jr z, 1F
+    ld d, 0x60
+
+1
+    add b
+    ld b, a
+
+    push bc
+    push de
+    call map.coord_to_addr
+    pop de
+    pop bc
+    ret m
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
+    ld a, d
+    ld d, 0
+    ld hl, move_bullet_up
     call init_bullet
     ret
 
