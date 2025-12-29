@@ -1,22 +1,32 @@
     module bullet
 
-    struct bullet
+    struct bullet_state
 y byte
 x byte
 y_d byte
 row byte
-
 sprite block 3
 data block 8
+move_proc word
     ends
+bullet_1 bullet_state
 
-bullet_1 bullet
+bullets dw bullet_1, 0
 
-; hl - bullet object
+; ix - bullet object
+; hl - move proc
+; bc - coord
+; d - y_d
 ; a - initial row value
 init_bullet:
-    ld de, bullet.row
-    add hl, de
+    ld (ix + bullet_state.move_proc), hl
+    ld hl, ix
+    ld (hl), c
+    inc hl
+    ld (hl), b
+    inc hl
+    ld (hl), d
+    inc hl
     ld (hl), a
     inc hl
     ld (hl), 7
@@ -27,6 +37,49 @@ init_bullet:
     inc hl
     ld (hl), d
     ret
+
+bullet_tick:
+    ld a, (hl)
+    or a
+    ret z
+
+    ld ix, hl
+    ld hl, (ix + bullet_state.move_proc)
+    ld (.call + 1), hl
+
+    call clear_bullet
+.call
+    call 0
+    jr nc, .draw
+
+    call bullet_collides
+    jr nz, .hide
+
+.draw
+    call draw_bullet
+    ret
+
+.hide
+    ld (ix), 0
+    ret
+
+bullet_loop:
+    ld hl, bullets
+.loop
+    ld e, (hl)
+    inc hl
+    ld d, (hl)
+
+    xor a
+    or d
+    ret z
+
+    push hl
+    ex de, hl
+    call bullet_tick
+    pop hl
+    inc hl
+    jr .loop
 
 clear_bullet:
     ld bc, (ix)
@@ -59,7 +112,7 @@ draw_bullet:
 
     ex de, hl
     ld hl, ix
-    ld bc, bullet.sprite
+    ld bc, bullet_state.sprite
     add hl, bc
     .3 ldi
     ld a, 1
@@ -68,15 +121,71 @@ draw_bullet:
     ret
 
 ; C is set if need to check collision
+; ix bullet
 move_bullet_right:
-    ld a, (ix + bullet.row)
+    ld a, (ix + bullet_state.row)
     .4 rrca
-    ld (ix + bullet.row), a
+    ld (ix + bullet_state.row), a
     ld (dirty_screen), a
     ret nc
 
     call clear_bullet
-    inc (ix + bullet.x)
+    inc (ix + bullet_state.x)
+    scf
+    ret
+
+move_bullet_left:
+    ld bc, bullet_state.row
+    add hl, bc
+    ld a, (hl)
+    .4 rlca
+    ld (hl), a
+    ld (dirty_screen), a
+    ret nc
+
+    call clear_bullet
+    dec hl
+    dec (hl)
+    scf
+    ret
+
+; hl - bullet
+move_bullet_down:
+    ld bc, bullet_state.y_d
+    add hl, bc
+    ld a, (hl)
+    add 2
+    cp 7
+    jr nc, .cell
+    ld (hl), a
+    ld (dirty_screen), a
+    ccf
+    ret
+
+.cell
+    ld (hl), 0
+    call clear_bullet
+    .2 dec hl
+    inc (hl)
+    scf
+    ret
+
+; hl - bullet
+move_bullet_up:
+    ld bc, bullet_state.y_d
+    add hl, bc
+    ld a, (hl)
+    sub 2
+    jr c, .cell
+    ld (hl), a
+    ld (dirty_screen), a
+    ret
+
+.cell
+    ld (hl), 0
+    call clear_bullet
+    .2 dec hl
+    inc (hl)
     scf
     ret
 
@@ -84,49 +193,77 @@ move_bullet_right:
 bullet_collides:
     ld bc, (ix)
     call map.coord_to_addr
-    jp m, .out
     ld a, (hl)
     and 0x7f
     ret
 
-.out
-    inc a
-    ret
-
-
-; bc - start location
 ; ix - bullet
 shoot_right:
-    ld hl, ix
+    ld ix, bullet_1
+    ld a, (ix)
+    or a
+    ret nz
+
+    ld hl, game.hero
+    ld c, (hl)
+    inc hl
+    ld b, (hl)
+    .2 inc b
+    inc c
+    push bc
+    call map.coord_to_addr
+    pop bc
+    ret m
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
     ld a, 0xc0
+    ld hl, move_bullet_right
+    ld d, 3
     call init_bullet
-    ld (ix + bullet.y_d), 3
-    ld (ix), bc
-1
-    call draw_bullet
-    halt
-    call move_bullet_right
-    jr nc, 1B
-
-    call bullet_collides
-    jr z, 1B
-
-2
-    set 7, (ix)
     ret
+
+; ix - bullet
+shoot_right:
+    ld ix, bullet_1
+    ld a, (ix)
+    or a
+    ret nz
+
+    ld hl, game.hero
+    ld c, (hl)
+    inc hl
+    ld b, (hl)
+    .2 inc b
+    inc c
+    push bc
+    call map.coord_to_addr
+    pop bc
+    ret m
+    ld a, (hl)
+    and 0x7f
+    ret nz
+
+    ld a, 0xc0
+    ld hl, move_bullet_right
+    ld d, 3
+    call init_bullet
+    ret
+
 
 ; ix - bullet object
 update_bullet_data:
     push hl
     push de
     push bc
-    ld b, (ix + bullet.y_d)
+    ld b, (ix + bullet_state.y_d)
     ld a, 6
     sub b
     ld c, a
 
     ld hl, ix
-    ld de, bullet.data
+    ld de, bullet_state.data
     add hl, de
 
     ld a, b
@@ -140,7 +277,7 @@ update_bullet_data:
     djnz 1B
 
 2
-    ld a, (ix + bullet.row)
+    ld a, (ix + bullet_state.row)
 
     ld (hl), a
     inc hl

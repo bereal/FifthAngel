@@ -96,8 +96,6 @@ read:
 .nointeract
 	cp '9'
 	jr nz, 1F
-	ld ix, bullet.bullet_1
-	ld bc, 0x202
 	call bullet.shoot_right
 	jr .next
 1

@@ -47,6 +47,7 @@ routine:
     xor a
     ld hl, game.level_objects
     call objects.object_loop
+    call bullet.bullet_loop
 
     ld a, (dirty_screen)
     or a
